@@ -1,56 +1,47 @@
-<!-- Add this button above the table -->
-<div class="mb-3">
-    <button class="btn btn-success" onclick="showImportModal()">Mass Update</button>
-    <input type="text" class="form-control mt-2" id="searchInput" placeholder="Search inventory...">
-</div>
-
-<!-- Update the table headers -->
-<table class="table">
-    <thead>
-        <tr>
-            <th>EquipmentType</th>
-            <th>Vendor</th>
-            <th>BrandModel</th>
-            <th>AssetNo</th>
-            <th>SerialNumber</th>
-            <th>EndDate</th>
-            <th>StartDate</th>
-            <th>Room</th>
-            <th>Room Number</th>
-            <th>Level</th>
-            <th>Lamphour</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody id="inventoryTableBody">
-    </tbody>
-</table>
-
-<!-- Add this modal for mass update -->
-<div class="modal fade" id="importModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Mass Update Inventory</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Upload Excel/CSV file</label>
-                    <input type="file" class="form-control" id="fileInput" accept=".csv, .xlsx">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Or Paste Data</label>
-                    <textarea class="form-control" id="dataInput" rows="10" placeholder="Paste your data here..."></textarea>
-                </div>
-                <div class="alert alert-info">
-                    <strong>Format:</strong> EquipmentType, Vendor, BrandModel, AssetNo, SerialNumber, EndDate, StartDate, Room, Room Number, Level, Lamphour
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="processData()">Update Inventory</button>
-            </div>
-        </div>
+<form id="inventoryForm" onsubmit="return addItem(event)">
+    <div class="mb-3">
+        <label for="equipmentType" class="form-label">Equipment Type</label>
+        <input type="text" class="form-control" id="equipmentType" required>
     </div>
-</div>
+    <div class="mb-3">
+        <label for="vendor" class="form-label">Vendor</label>
+        <input type="text" class="form-control" id="vendor" required>
+    </div>
+    <div class="mb-3">
+        <label for="brandModel" class="form-label">Brand Model</label>
+        <input type="text" class="form-control" id="brandModel" required>
+    </div>
+    <div class="mb-3">
+        <label for="assetNo" class="form-label">Asset No</label>
+        <input type="text" class="form-control" id="assetNo" required>
+    </div>
+    <div class="mb-3">
+        <label for="serialNumber" class="form-label">Serial Number</label>
+        <input type="text" class="form-control" id="serialNumber" required>
+    </div>
+    <div class="mb-3">
+        <label for="endDate" class="form-label">End Date</label>
+        <input type="date" class="form-control" id="endDate" required>
+    </div>
+    <div class="mb-3">
+        <label for="startDate" class="form-label">Start Date</label>
+        <input type="date" class="form-control" id="startDate" required>
+    </div>
+    <div class="mb-3">
+        <label for="room" class="form-label">Room</label>
+        <input type="text" class="form-control" id="room" required>
+    </div>
+    <div class="mb-3">
+        <label for="roomNumber" class="form-label">Room Number</label>
+        <input type="text" class="form-control" id="roomNumber" required>
+    </div>
+    <div class="mb-3">
+        <label for="level" class="form-label">Level</label>
+        <input type="text" class="form-control" id="level" required>
+    </div>
+    <div class="mb-3">
+        <label for="lamphour" class="form-label">Lamp Hour</label>
+        <input type="number" class="form-control" id="lamphour" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Item</button>
+</form>
