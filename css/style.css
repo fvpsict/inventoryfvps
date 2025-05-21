@@ -1,15 +1,16 @@
-/* Container styling */
+/* Add some padding to the container */
 .container {
     padding-top: 20px;
     padding-bottom: 20px;
 }
 
-/* Table styling */
+/* Style the table */
 .table {
     background-color: white;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
+/* Style the table headers */
 .table thead th {
     background-color: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
@@ -18,7 +19,18 @@
     z-index: 1;
 }
 
-/* Form styling */
+/* Style for sortable headers */
+th[style*="cursor: pointer"]:hover {
+    background-color: #e9ecef;
+}
+
+th[style*="cursor: pointer"]::after {
+    content: ' ↕️';
+    font-size: 0.8em;
+    opacity: 0.5;
+}
+
+/* Style the form */
 form {
     background-color: white;
     padding: 20px;
@@ -26,24 +38,24 @@ form {
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* Button spacing */
+/* Style the buttons */
 .btn {
     margin-right: 5px;
 }
 
-/* Search input */
+/* Style the search input */
 #searchInput {
     max-width: 300px;
     margin-bottom: 20px;
 }
 
-/* Welcome message */
+/* Style the welcome message */
 #welcomeMessage {
     text-align: center;
     padding: 40px 0;
 }
 
-/* Modal styling */
+/* Style the modal */
 .modal-content {
     border-radius: 5px;
 }
@@ -58,38 +70,6 @@ form {
     overflow-y: auto;
 }
 
-/* Table row hover effect */
-.table tbody tr:hover {
-    background-color: #f5f5f5;
-}
-
-/* Edit form styling */
-.edit-form-container {
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.form-check {
-    margin-bottom: 0.5rem;
-}
-
-.form-control:disabled {
-    background-color: #e9ecef;
-    opacity: 0.7;
-}
-
-/* Checked items styling */
-.form-check-input:checked + .form-check-label {
-    font-weight: bold;
-    color: #0d6efd;
-}
-
-/* Modal dialog size */
-.modal-dialog {
-    max-width: 600px;
-}
-
-/* Responsive design */
 @media (max-width: 768px) {
     .table-responsive {
         display: block;
@@ -97,22 +77,37 @@ form {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
-    
-    .btn {
-        margin-bottom: 5px;
-        width: 100%;
-    }
-    
-    .modal-dialog {
-        margin: 0.5rem;
-    }
 }
 
-/* Warning and danger states */
-.table-warning {
-    background-color: #fff3cd !important;
+/* Add hover effect to table rows */
+.table tbody tr:hover {
+    background-color: #f5f5f5;
 }
 
-.table-danger {
-    background-color: #f8d7da !important;
+/* Style the alert info */
+.alert-info {
+    margin-top: 15px;
+}
+
+/* Style the file input */
+.form-control[type="file"] {
+    padding: 3px 5px;
+}
+
+/* Style for the duration column */
+td:nth-child(8) {
+    white-space: nowrap;
+}
+
+/* Add some spacing between form groups */
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+/* Make the table more compact on mobile */
+@media (max-width: 576px) {
+    .table td, .table th {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
 }
