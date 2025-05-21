@@ -1,76 +1,40 @@
+// Initialize inventory on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Initial setup
-    setupEventListeners();
-    showWelcome(); // Show welcome screen by default
+    loadInventory();
+    setupSearchListener();
 });
 
-function setupEventListeners() {
-    // Navigation event listeners
-    document.getElementById('addItemLink').addEventListener('click', function(e) {
-        e.preventDefault();
-        showAddItem();
-    });
-
-    document.getElementById('viewInventoryLink').addEventListener('click', function(e) {
-        e.preventDefault();
-        showInventory();
-    });
-
-    document.getElementById('welcomeAddBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        showAddItem();
-    });
-
-    document.getElementById('welcomeViewBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        showInventory();
-    });
-
-    document.getElementById('cancelAdd').addEventListener('click', function(e) {
-        e.preventDefault();
-        showWelcome();
-    });
-
-    // Form submission
-    document.getElementById('inventoryForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        addItem();
-    });
-
-    // Mass update and export buttons
-    document.getElementById('massUpdateBtn').addEventListener('click', showImportModal);
-    document.getElementById('exportBtn').addEventListener('click', exportToCSV);
-    document.getElementById('processDataBtn').addEventListener('click', processData);
-    document.getElementById('saveEditBtn').addEventListener('click', saveEdit);
-
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', function() {
+// Setup search functionality
+function setupSearchListener() {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', function() {
         loadInventory(this.value.toLowerCase());
     });
 }
 
 // Navigation Functions
-function showWelcome() {
-    document.getElementById('welcomeMessage').style.display = 'block';
-    document.getElementById('addItemForm').style.display = 'none';
-    document.getElementById('inventoryList').style.display = 'none';
-}
-
 function showAddItem() {
-    document.getElementById('welcomeMessage').style.display = 'none';
     document.getElementById('addItemForm').style.display = 'block';
     document.getElementById('inventoryList').style.display = 'none';
+    document.getElementById('welcomeMessage').style.display = 'none';
 }
 
 function showInventory() {
-    document.getElementById('welcomeMessage').style.display = 'none';
     document.getElementById('addItemForm').style.display = 'none';
     document.getElementById('inventoryList').style.display = 'block';
+    document.getElementById('welcomeMessage').style.display = 'none';
     loadInventory();
 }
 
+function showImportModal() {
+    const modal = new bootstrap.Modal(document.getElementById('importModal'));
+    modal.show();
+}
+
 // Inventory Management Functions
-function addItem() {
+function addItem(event) {
+    event.preventDefault();
+    
     const item = {
         equipmentType: document.getElementById('equipmentType').value,
         vendor: document.getElementById('vendor').value,
@@ -85,60 +49,60 @@ function addItem() {
         lamphour: document.getElementById('lamphour').value
     };
 
-    let inventory = getInventory();
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     
-    // Check for duplicates
-    if (inventory.some(existing => 
-        existing.assetNo === item.assetNo || 
-        existing.serialNumber === item.serialNumber)) {
+    // Check for duplicate Asset No or Serial Number
+    const isDuplicate = inventory.some(existingItem => 
+        existingItem.assetNo === item.assetNo || 
+        existingItem.serialNumber === item.serialNumber
+    );
+
+    if (isDuplicate) {
         alert('An item with this Asset No or Serial Number already exists!');
-        return;
+        return false;
     }
 
     inventory.push(item);
-    saveInventory(inventory);
+    localStorage.setItem('inventory', JSON.stringify(inventory));
     
     document.getElementById('inventoryForm').reset();
     showInventory();
+    return false;
 }
 
 function loadInventory(searchTerm = '') {
-    const inventory = getInventory();
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     const tableBody = document.getElementById('inventoryTableBody');
     tableBody.innerHTML = '';
 
-    if (inventory.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="13" class="text-center">
-                    <p class="my-3">No items in inventory</p>
-                </td>
-            </tr>`;
-        return;
-    }
-
     inventory.forEach((item, index) => {
+        // If there's a search term, filter the items
         if (searchTerm) {
             const searchableText = Object.values(item).join(' ').toLowerCase();
             if (!searchableText.includes(searchTerm)) return;
         }
 
         const row = document.createElement('tr');
-        const duration = calculateDuration(item.startDate, item.endDate);
         
+        // Calculate duration in use
+        const startDate = new Date(item.startDate);
+        const endDate = new Date(item.endDate);
+        const durationInDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+        const durationInYears = (durationInDays / 365).toFixed(1);
+
         row.innerHTML = `
-            <td>${item.equipmentType || ''}</td>
-            <td>${item.vendor || ''}</td>
-            <td>${item.brandModel || ''}</td>
-            <td>${item.assetNo || ''}</td>
-            <td>${item.serialNumber || ''}</td>
-            <td>${formatDate(item.endDate) || ''}</td>
-            <td>${formatDate(item.startDate) || ''}</td>
-            <td>${duration || ''}</td>
-            <td>${item.room || ''}</td>
-            <td>${item.roomNumber || ''}</td>
-            <td>${item.level || ''}</td>
-            <td>${item.lamphour || ''}</td>
+            <td>${item.equipmentType}</td>
+            <td>${item.vendor}</td>
+            <td>${item.brandModel}</td>
+            <td>${item.assetNo}</td>
+            <td>${item.serialNumber}</td>
+            <td>${formatDate(item.endDate)}</td>
+            <td>${formatDate(item.startDate)}</td>
+            <td>${durationInYears} years</td>
+            <td>${item.room}</td>
+            <td>${item.roomNumber}</td>
+            <td>${item.level}</td>
+            <td>${item.lamphour}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="editItem(${index})">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteItem(${index})">Delete</button>
@@ -148,64 +112,27 @@ function loadInventory(searchTerm = '') {
     });
 }
 
+function formatDate(dateString) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
 function editItem(index) {
-    const inventory = getInventory();
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     const item = inventory[index];
     
-    const modalBody = document.querySelector('#editModal .modal-body form');
-    modalBody.innerHTML = `
-        <input type="hidden" id="editIndex" value="${index}">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label class="form-label">Equipment Type</label>
-                    <input type="text" class="form-control" id="editEquipmentType" value="${item.equipmentType}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Vendor</label>
-                    <input type="text" class="form-control" id="editVendor" value="${item.vendor}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Brand & Model</label>
-                    <input type="text" class="form-control" id="editBrandModel" value="${item.brandModel}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Asset No</label>
-                    <input type="text" class="form-control" id="editAssetNo" value="${item.assetNo}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Serial Number</label>
-                    <input type="text" class="form-control" id="editSerialNumber" value="${item.serialNumber}" required>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label class="form-label">End Date</label>
-                    <input type="date" class="form-control" id="editEndDate" value="${item.endDate}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Start Date</label>
-                    <input type="date" class="form-control" id="editStartDate" value="${item.startDate}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Room</label>
-                    <input type="text" class="form-control" id="editRoom" value="${item.room}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Room Number</label>
-                    <input type="text" class="form-control" id="editRoomNumber" value="${item.roomNumber}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Level</label>
-                    <input type="number" class="form-control" id="editLevel" value="${item.level}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Lamp Hour</label>
-                    <input type="number" class="form-control" id="editLamphour" value="${item.lamphour}" required>
-                </div>
-            </div>
-        </div>
-    `;
+    document.getElementById('editIndex').value = index;
+    document.getElementById('editEquipmentType').value = item.equipmentType;
+    document.getElementById('editVendor').value = item.vendor;
+    document.getElementById('editBrandModel').value = item.brandModel;
+    document.getElementById('editAssetNo').value = item.assetNo;
+    document.getElementById('editSerialNumber').value = item.serialNumber;
+    document.getElementById('editEndDate').value = item.endDate;
+    document.getElementById('editStartDate').value = item.startDate;
+    document.getElementById('editRoom').value = item.room;
+    document.getElementById('editRoomNumber').value = item.roomNumber;
+    document.getElementById('editLevel').value = item.level;
+    document.getElementById('editLamphour').value = item.lamphour;
 
     const modal = new bootstrap.Modal(document.getElementById('editModal'));
     modal.show();
@@ -213,7 +140,7 @@ function editItem(index) {
 
 function saveEdit() {
     const index = document.getElementById('editIndex').value;
-    const inventory = getInventory();
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     
     const updatedItem = {
         equipmentType: document.getElementById('editEquipmentType').value,
@@ -241,7 +168,7 @@ function saveEdit() {
     }
 
     inventory[index] = updatedItem;
-    saveInventory(inventory);
+    localStorage.setItem('inventory', JSON.stringify(inventory));
     
     const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
     modal.hide();
@@ -251,62 +178,183 @@ function saveEdit() {
 
 function deleteItem(index) {
     if (confirm('Are you sure you want to delete this item?')) {
-        let inventory = getInventory();
+        let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
         inventory.splice(index, 1);
-        saveInventory(inventory);
+        localStorage.setItem('inventory', JSON.stringify(inventory));
         loadInventory();
     }
 }
 
-// Utility Functions
-function formatDate(dateString) {
-    if (!dateString) return '';
+// Import/Export Functions
+function processPastedData(data) {
     try {
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
-    } catch (e) {
-        console.error('Error formatting date:', e);
-        return dateString;
-    }
-}
+        const rows = data.trim().split('\n');
+        if (rows.length < 2) {
+            alert('No data found to import');
+            return false;
+        }
 
-function calculateDuration(startDate, endDate) {
-    if (!startDate || !endDate) return '';
-    try {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const diffTime = Math.abs(end - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return `${(diffDays / 365).toFixed(1)} years`;
-    } catch (e) {
-        console.error('Error calculating duration:', e);
-        return '';
-    }
-}
+        // Get and process headers
+        const headers = rows[0].split('\t').map(header => header.trim().toLowerCase());
+        const headerIndexMap = {
+            'equipmenttype': -1,
+            'vendor': -1,
+            'brandmodel': -1,
+            'assetno': -1,
+            'serialnumber': -1,
+            'enddate': -1,
+            'startdate': -1,
+            'room': -1,
+            'room number': -1,
+            'level': -1,
+            'lamphour': -1
+        };
 
-function getInventory() {
-    try {
-        return JSON.parse(localStorage.getItem('inventory')) || [];
-    } catch (e) {
-        console.error('Error reading from localStorage:', e);
-        return [];
-    }
-}
+        // Map header indices
+        headers.forEach((header, index) => {
+            if (headerIndexMap.hasOwnProperty(header.replace(/\s+/g, ''))) {
+                headerIndexMap[header.replace(/\s+/g, '')] = index;
+            }
+        });
 
-function saveInventory(inventory) {
-    try {
-        localStorage.setItem('inventory', JSON.stringify(inventory));
-        return true;
-    } catch (e) {
-        console.error('Error saving to localStorage:', e);
+        // Get existing inventory
+        const existingInventory = JSON.parse(localStorage.getItem('inventory')) || [];
+        const newInventory = [...existingInventory];
+        let errorRows = [];
+        let updatedCount = 0;
+        let addedCount = 0;
+
+        // Process data rows
+        for (let i = 1; i < rows.length; i++) {
+            const columns = rows[i].split('\t').map(col => col.trim());
+            if (columns.length < headers.length) {
+                errorRows.push(i + 1);
+                continue;
+            }
+
+            // Create item object with only the fields present in headers
+            const item = {};
+            let hasData = false;
+            
+            // Map data according to headers
+            if (headerIndexMap.equipmenttype !== -1) {
+                item.equipmentType = columns[headerIndexMap.equipmenttype];
+                hasData = true;
+            }
+            if (headerIndexMap.vendor !== -1) {
+                item.vendor = columns[headerIndexMap.vendor];
+                hasData = true;
+            }
+            if (headerIndexMap.brandmodel !== -1) {
+                item.brandModel = columns[headerIndexMap.brandmodel];
+                hasData = true;
+            }
+            if (headerIndexMap.assetno !== -1) {
+                item.assetNo = columns[headerIndexMap.assetno];
+                hasData = true;
+            }
+            if (headerIndexMap.serialnumber !== -1) {
+                item.serialNumber = columns[headerIndexMap.serialnumber];
+                hasData = true;
+            }
+            if (headerIndexMap.enddate !== -1) {
+                item.endDate = columns[headerIndexMap.enddate];
+                hasData = true;
+            }
+            if (headerIndexMap.startdate !== -1) {
+                item.startDate = columns[headerIndexMap.startdate];
+                hasData = true;
+            }
+            if (headerIndexMap.room !== -1) {
+                item.room = columns[headerIndexMap.room];
+                hasData = true;
+            }
+            if (headerIndexMap['room number'] !== -1) {
+                item.roomNumber = columns[headerIndexMap['room number']];
+                hasData = true;
+            }
+            if (headerIndexMap.level !== -1) {
+                item.level = columns[headerIndexMap.level];
+                hasData = true;
+            }
+            if (headerIndexMap.lamphour !== -1) {
+                item.lamphour = columns[headerIndexMap.lamphour];
+                hasData = true;
+            }
+
+            if (!hasData) {
+                errorRows.push(i + 1);
+                continue;
+            }
+
+            // Try to find existing item by Asset No or Serial Number
+            const existingItemIndex = newInventory.findIndex(existing => 
+                (item.assetNo && existing.assetNo === item.assetNo) || 
+                (item.serialNumber && existing.serialNumber === item.serialNumber)
+            );
+
+            if (existingItemIndex !== -1) {
+                // Update existing item with new data while preserving existing fields
+                const updatedItem = { ...newInventory[existingItemIndex] };
+                Object.keys(item).forEach(key => {
+                    if (item[key]) {
+                        updatedItem[key] = item[key];
+                    }
+                });
+                newInventory[existingItemIndex] = updatedItem;
+                updatedCount++;
+            } else {
+                // For new items, ensure all required fields have default values
+                const newItem = {
+                    equipmentType: item.equipmentType || '',
+                    vendor: item.vendor || '',
+                    brandModel: item.brandModel || '',
+                    assetNo: item.assetNo || '',
+                    serialNumber: item.serialNumber || '',
+                    endDate: item.endDate || '',
+                    startDate: item.startDate || '',
+                    room: item.room || '',
+                    roomNumber: item.roomNumber || '',
+                    level: item.level || '',
+                    lamphour: item.lamphour || ''
+                };
+                newInventory.push(newItem);
+                addedCount++;
+            }
+        }
+
+        if (errorRows.length > 0) {
+            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
+        }
+
+        if (updatedCount > 0 || addedCount > 0) {
+            localStorage.setItem('inventory', JSON.stringify(newInventory));
+            alert(`Update successful!\nUpdated items: ${updatedCount}\nNew items added: ${addedCount}`);
+            
+            // Close the modal
+            const modalElement = document.getElementById('importModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+
+            // Clear inputs
+            document.getElementById('fileInput').value = '';
+            document.getElementById('dataInput').value = '';
+
+            // Show inventory
+            showInventory();
+            return true;
+        } else {
+            alert('No valid data found to import.');
+            return false;
+        }
+
+    } catch (error) {
+        console.error('Error processing pasted data:', error);
+        alert('Error processing data. Please check the format and try again.');
         return false;
     }
-}
-
-// Import/Export Functions
-function showImportModal() {
-    const modal = new bootstrap.Modal(document.getElementById('importModal'));
-    modal.show();
 }
 
 function processData() {
@@ -317,62 +365,18 @@ function processData() {
         const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onload = function(e) {
-            processImportedData(e.target.result);
+            processPastedData(e.target.result);
         };
         reader.readAsText(file);
-    } else if (dataInput.value.trim()) {
-        processImportedData(dataInput.value);
+    } else if (dataInput.value.trim() !== '') {
+        processPastedData(dataInput.value);
     } else {
         alert('Please either upload a file or paste data');
     }
 }
 
-function processImportedData(data) {
-    try {
-        const rows = data.trim().split('\n');
-        const headers = rows[0].toLowerCase().split('\t');
-        const inventory = getInventory();
-        let updated = 0, added = 0;
-
-        for (let i = 1; i < rows.length; i++) {
-            const values = rows[i].split('\t');
-            const item = {};
-            
-            headers.forEach((header, index) => {
-                if (values[index]) {
-                    item[header.replace(/\s+/g, '')] = values[index].trim();
-                }
-            });
-
-            const existingIndex = inventory.findIndex(existing => 
-                existing.assetNo === item.assetno || 
-                existing.serialNumber === item.serialnumber
-            );
-
-            if (existingIndex >= 0) {
-                inventory[existingIndex] = {...inventory[existingIndex], ...item};
-                updated++;
-            } else {
-                inventory.push(item);
-                added++;
-            }
-        }
-
-        saveInventory(inventory);
-        alert(`Updated ${updated} items and added ${added} new items.`);
-        
-        const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
-        modal.hide();
-        
-        loadInventory();
-    } catch (error) {
-        alert('Error processing data. Please check the format and try again.');
-        console.error(error);
-    }
-}
-
 function exportToCSV() {
-    const inventory = getInventory();
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     if (inventory.length === 0) {
         alert('No data to export');
         return;
@@ -382,8 +386,8 @@ function exportToCSV() {
                     'Serial Number', 'End Date', 'Start Date', 'Room', 
                     'Room Number', 'Level', 'Lamp Hour'];
     
-    const rows = [headers.join('\t')];
-    
+    const csvRows = [headers.join('\t')];
+
     inventory.forEach(item => {
         const row = [
             item.equipmentType,
@@ -398,10 +402,10 @@ function exportToCSV() {
             item.level,
             item.lamphour
         ];
-        rows.push(row.join('\t'));
+        csvRows.push(row.join('\t'));
     });
 
-    const csvContent = rows.join('\n');
+    const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     
