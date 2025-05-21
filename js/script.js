@@ -1,3 +1,36 @@
+console.log('Script loaded');
+
+// Add these console.log statements to verify button clicks are being detected
+function showAddItem() {
+    console.log('Add Item button clicked');
+    document.getElementById('addItemForm').style.display = 'block';
+    document.getElementById('inventoryList').style.display = 'none';
+    document.getElementById('welcomeMessage').style.display = 'none';
+}
+
+function showInventory() {
+    console.log('View Inventory button clicked');
+    document.getElementById('addItemForm').style.display = 'none';
+    document.getElementById('inventoryList').style.display = 'block';
+    document.getElementById('welcomeMessage').style.display = 'none';
+    loadInventory();
+}
+
+function showImportModal() {
+    console.log('Import/Update Data button clicked');
+    const modalElement = document.getElementById('importModal');
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
+    
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+
+
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     if (!localStorage.getItem('inventory')) {
