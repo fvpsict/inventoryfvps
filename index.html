@@ -33,32 +33,48 @@
             <h2>Add New Item</h2>
             <form id="inventoryForm" onsubmit="return addItem(event)">
                 <div class="mb-3">
-                    <label for="serialNumber" class="form-label">Serial Number</label>
-                    <input type="text" class="form-control" id="serialNumber" required>
-                </div>
-                <div class="mb-3">
                     <label for="equipmentType" class="form-label">Equipment Type</label>
                     <input type="text" class="form-control" id="equipmentType" required>
                 </div>
                 <div class="mb-3">
-                    <label for="equipmentBrandModel" class="form-label">Equipment Brand & Model</label>
-                    <input type="text" class="form-control" id="equipmentBrandModel" required>
+                    <label for="vendor" class="form-label">Vendor</label>
+                    <input type="text" class="form-control" id="vendor" required>
                 </div>
                 <div class="mb-3">
-                    <label for="location" class="form-label">Location</label>
-                    <input type="text" class="form-control" id="location" required>
+                    <label for="brandModel" class="form-label">Brand & Model</label>
+                    <input type="text" class="form-control" id="brandModel" required>
                 </div>
                 <div class="mb-3">
-                    <label for="quantity" class="form-label">Quantity</label>
-                    <input type="number" class="form-control" id="quantity" required>
+                    <label for="assetNo" class="form-label">Asset No</label>
+                    <input type="text" class="form-control" id="assetNo" required>
+                </div>
+                <div class="mb-3">
+                    <label for="serialNumber" class="form-label">Serial Number</label>
+                    <input type="text" class="form-control" id="serialNumber" required>
+                </div>
+                <div class="mb-3">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="endDate" required>
                 </div>
                 <div class="mb-3">
                     <label for="startDate" class="form-label">Start Date</label>
                     <input type="date" class="form-control" id="startDate" required>
                 </div>
                 <div class="mb-3">
-                    <label for="endDate" class="form-label">End Date</label>
-                    <input type="date" class="form-control" id="endDate" required>
+                    <label for="room" class="form-label">Room</label>
+                    <input type="text" class="form-control" id="room" required>
+                </div>
+                <div class="mb-3">
+                    <label for="roomNumber" class="form-label">Room Number</label>
+                    <input type="text" class="form-control" id="roomNumber" required>
+                </div>
+                <div class="mb-3">
+                    <label for="level" class="form-label">Level</label>
+                    <input type="number" class="form-control" id="level" required>
+                </div>
+                <div class="mb-3">
+                    <label for="lamphour" class="form-label">Lamp Hour</label>
+                    <input type="number" class="form-control" id="lamphour" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Add Item</button>
             </form>
@@ -72,26 +88,33 @@
                 <button class="btn btn-primary ms-2" onclick="exportToCSV()">Export to CSV</button>
                 <input type="text" class="form-control mt-2" id="searchInput" placeholder="Search inventory...">
             </div>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Serial Number</th>
-                        <th>Equipment Type</th>
-                        <th>Equipment Brand & Model</th>
-                        <th>Location</th>
-                        <th>Quantity</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="inventoryTableBody">
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Equipment Type</th>
+                            <th>Vendor</th>
+                            <th>Brand & Model</th>
+                            <th>Asset No</th>
+                            <th>Serial Number</th>
+                            <th>End Date</th>
+                            <th>Start Date</th>
+                            <th>Duration in Use</th>
+                            <th>Room</th>
+                            <th>Room Number</th>
+                            <th>Level</th>
+                            <th>Lamp Hour</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Welcome Message -->
-        <div id="welcomeMessage" style="display: block;>
+        <div id="welcomeMessage" style="display: block;">
             <h1 class="display-4">Welcome to FVPS Inventory System</h1>
             <p class="lead">Manage your inventory efficiently with our web-based system.</p>
             <hr class="my-4">
@@ -99,12 +122,12 @@
         </div>
 
         <!-- Mass Update Modal -->
-        <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Mass Update Inventory</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title" id="importModalLabel">Mass Update Inventory</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -114,12 +137,12 @@
                         <div class="mb-3">
                             <label class="form-label">Or Paste Data Here</label>
                             <textarea class="form-control" id="dataInput" rows="10" 
-                                placeholder="Serial Number,Equipment Type,Equipment Brand & Model,Location,Quantity,Start Date,End Date"></textarea>
+                                placeholder="EquipmentType&#9;Vendor&#9;BrandModel&#9;AssetNo&#9;SerialNumber&#9;EndDate&#9;StartDate&#9;Room&#9;Room Number&#9;Level&#9;Lamphour"></textarea>
                         </div>
                         <div class="alert alert-info">
-                            <strong>Format:</strong> Serial Number,Equipment Type,Equipment Brand & Model,Location,Quantity,Start Date,End Date
+                            <strong>Format:</strong> EquipmentType&#9;Vendor&#9;BrandModel&#9;AssetNo&#9;SerialNumber&#9;EndDate&#9;StartDate&#9;Room&#9;Room Number&#9;Level&#9;Lamphour
                             <br>
-                            <strong>Example:</strong> SN001,Projector,Epson EB-L200F,Room 101,1,2024-01-01,2025-01-01
+                            <strong>Example:</strong> Projector&#9;Epson&#9;EB-L200F&#9;P001&#9;SN001&#9;2025-01-01&#9;2024-01-01&#9;Classroom&#9;101&#9;1&#9;500
                         </div>
                     </div>
                     <div class="modal-footer">
