@@ -65,6 +65,19 @@ function loadInventory() {
     });
 }
 
+function showImportModal() {
+    // Get the modal element
+    const modalElement = document.getElementById('importModal');
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
+
+    // Create and show the modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
 function editItem(index) {
     const inventory = JSON.parse(localStorage.getItem('inventory'));
     const item = inventory[index];
