@@ -1,25 +1,28 @@
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    if (!localStorage.getItem('inventory')) {
-        localStorage.setItem('inventory', JSON.stringify([]));
-    }
+    // Navigation event listeners
+    document.getElementById('addItemLink').addEventListener('click', showAddItem);
+    document.getElementById('viewInventoryLink').addEventListener('click', showInventory);
+    document.getElementById('welcomeAddBtn').addEventListener('click', showAddItem);
+    document.getElementById('welcomeViewBtn').addEventListener('click', showInventory);
+    document.getElementById('cancelAdd').addEventListener('click', showWelcome);
+    document.getElementById('massUpdateBtn').addEventListener('click', showImportModal);
+    document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+    document.getElementById('processDataBtn').addEventListener('click', processData);
+    document.getElementById('saveEditBtn').addEventListener('click', saveEdit);
 
-    // Make headers sortable
-    const headers = document.querySelectorAll('table thead th');
-    headers.forEach((header, index) => {
-        if (index < headers.length - 1) { // Don't make the Actions column sortable
-            header.style.cursor = 'pointer';
-            header.addEventListener('click', () => sortTable(index));
-            header.title = 'Click to sort';
-        }
+    // Form submission handler
+    document.getElementById('inventoryForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addItem();
     });
 
-    // Add search functionality
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-        loadInventory(this.value);
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        loadInventory(this.value.toLowerCase());
     });
 });
 
+// Navigation Functions
 function showAddItem() {
     document.getElementById('addItemForm').style.display = 'block';
     document.getElementById('inventoryList').style.display = 'none';
@@ -33,9 +36,19 @@ function showInventory() {
     loadInventory();
 }
 
-function addItem(event) {
-    event.preventDefault();
+function showWelcome() {
+    document.getElementById('addItemForm').style.display = 'none';
+    document.getElementById('inventoryList').style.display = 'none';
+    document.getElementById('welcomeMessage').style.display = 'block';
+}
 
+function showImportModal() {
+    const modal = new bootstrap.Modal(document.getElementById('importModal'));
+    modal.show();
+}
+
+// Inventory Management Functions
+function addItem() {
     const item = {
         equipmentType: document.getElementById('equipmentType').value,
         vendor: document.getElementById('vendor').value,
@@ -51,74 +64,44 @@ function addItem(event) {
     };
 
     let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    
+    // Check for duplicates
+    if (inventory.some(existing => 
+        existing.assetNo === item.assetNo || 
+        existing.serialNumber === item.serialNumber)) {
+        alert('An item with this Asset No or Serial Number already exists!');
+        return;
+    }
+
     inventory.push(item);
     localStorage.setItem('inventory', JSON.stringify(inventory));
-
+    
     document.getElementById('inventoryForm').reset();
-    alert('Item added successfully!');
     showInventory();
 }
 
-function calculateDuration(startDate) {
-    try {
-        const start = new Date(startDate);
-        const today = new Date();
-        
-        const diffTime = Math.abs(today - start);
-        const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        const years = Math.floor(days / 365);
-        const months = Math.floor((days % 365) / 30);
-        const remainingDays = days % 30;
-        
-        let duration = '';
-        if (years > 0) {
-            duration += `${years} year${years > 1 ? 's' : ''} `;
-        }
-        if (months > 0) {
-            duration += `${months} month${months > 1 ? 's' : ''} `;
-        }
-        if (remainingDays > 0 || duration === '') {
-            duration += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
-        }
-        
-        return duration.trim();
-    } catch (error) {
-        console.error('Error calculating duration:', error);
-        return 'Invalid date';
-    }
-}
-
 function loadInventory(searchTerm = '') {
-    let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    
-    if (searchTerm) {
-        searchTerm = searchTerm.toLowerCase();
-        inventory = inventory.filter(item => 
-            item.equipmentType.toLowerCase().includes(searchTerm) ||
-            item.vendor.toLowerCase().includes(searchTerm) ||
-            item.brandModel.toLowerCase().includes(searchTerm) ||
-            item.assetNo.toLowerCase().includes(searchTerm) ||
-            item.serialNumber.toLowerCase().includes(searchTerm) ||
-            item.room.toLowerCase().includes(searchTerm) ||
-            item.roomNumber.toLowerCase().includes(searchTerm)
-        );
-    }
-
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     const tableBody = document.getElementById('inventoryTableBody');
     tableBody.innerHTML = '';
 
     inventory.forEach((item, index) => {
-        const duration = calculateDuration(item.startDate);
+        if (searchTerm) {
+            const searchableText = Object.values(item).join(' ').toLowerCase();
+            if (!searchableText.includes(searchTerm)) return;
+        }
+
         const row = document.createElement('tr');
+        const duration = calculateDuration(item.startDate, item.endDate);
+        
         row.innerHTML = `
             <td>${item.equipmentType}</td>
             <td>${item.vendor}</td>
             <td>${item.brandModel}</td>
             <td>${item.assetNo}</td>
             <td>${item.serialNumber}</td>
-            <td>${item.endDate}</td>
-            <td>${item.startDate}</td>
+            <td>${formatDate(item.endDate)}</td>
+            <td>${formatDate(item.startDate)}</td>
             <td>${duration}</td>
             <td>${item.room}</td>
             <td>${item.roomNumber}</td>
@@ -133,209 +116,226 @@ function loadInventory(searchTerm = '') {
     });
 }
 
+function calculateDuration(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return `${(diffDays / 365).toFixed(1)} years`;
+}
+
+function formatDate(dateString) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
 function editItem(index) {
-    const inventory = JSON.parse(localStorage.getItem('inventory'));
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     const item = inventory[index];
     
-    const newItem = {
-        equipmentType: prompt('Enter new Equipment Type:', item.equipmentType),
-        vendor: prompt('Enter new Vendor:', item.vendor),
-        brandModel: prompt('Enter new Brand & Model:', item.brandModel),
-        assetNo: prompt('Enter new Asset No:', item.assetNo),
-        serialNumber: prompt('Enter new Serial Number:', item.serialNumber),
-        endDate: prompt('Enter new End Date (YYYY-MM-DD):', item.endDate),
-        startDate: prompt('Enter new Start Date (YYYY-MM-DD):', item.startDate),
-        room: prompt('Enter new Room:', item.room),
-        roomNumber: prompt('Enter new Room Number:', item.roomNumber),
-        level: prompt('Enter new Level:', item.level),
-        lamphour: prompt('Enter new Lamp Hour:', item.lamphour)
+    const modalBody = document.querySelector('#editModal .modal-body form');
+    modalBody.innerHTML = `
+        <input type="hidden" id="editIndex" value="${index}">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Equipment Type</label>
+                    <input type="text" class="form-control" id="editEquipmentType" value="${item.equipmentType}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Vendor</label>
+                    <input type="text" class="form-control" id="editVendor" value="${item.vendor}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Brand & Model</label>
+                    <input type="text" class="form-control" id="editBrandModel" value="${item.brandModel}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Asset No</label>
+                    <input type="text" class="form-control" id="editAssetNo" value="${item.assetNo}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Serial Number</label>
+                    <input type="text" class="form-control" id="editSerialNumber" value="${item.serialNumber}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="editEndDate" value="${item.endDate}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="editStartDate" value="${item.startDate}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Room</label>
+                    <input type="text" class="form-control" id="editRoom" value="${item.room}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Room Number</label>
+                    <input type="text" class="form-control" id="editRoomNumber" value="${item.roomNumber}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Level</label>
+                    <input type="number" class="form-control" id="editLevel" value="${item.level}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Lamp Hour</label>
+                    <input type="number" class="form-control" id="editLamphour" value="${item.lamphour}" required>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('editModal'));
+    modal.show();
+}
+
+function saveEdit() {
+    const index = document.getElementById('editIndex').value;
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    
+    const updatedItem = {
+        equipmentType: document.getElementById('editEquipmentType').value,
+        vendor: document.getElementById('editVendor').value,
+        brandModel: document.getElementById('editBrandModel').value,
+        assetNo: document.getElementById('editAssetNo').value,
+        serialNumber: document.getElementById('editSerialNumber').value,
+        endDate: document.getElementById('editEndDate').value,
+        startDate: document.getElementById('editStartDate').value,
+        room: document.getElementById('editRoom').value,
+        roomNumber: document.getElementById('editRoomNumber').value,
+        level: document.getElementById('editLevel').value,
+        lamphour: document.getElementById('editLamphour').value
     };
 
-    // Check if any field was cancelled
-    if (Object.values(newItem).includes(null)) {
-        return; // Exit if any field was cancelled
+    // Check for duplicates excluding the current item
+    const isDuplicate = inventory.some((item, i) => 
+        i != index && (item.assetNo === updatedItem.assetNo || 
+        item.serialNumber === updatedItem.serialNumber)
+    );
+
+    if (isDuplicate) {
+        alert('An item with this Asset No or Serial Number already exists!');
+        return;
     }
 
-    inventory[index] = newItem;
+    inventory[index] = updatedItem;
     localStorage.setItem('inventory', JSON.stringify(inventory));
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+    modal.hide();
+    
     loadInventory();
 }
 
 function deleteItem(index) {
     if (confirm('Are you sure you want to delete this item?')) {
-        const inventory = JSON.parse(localStorage.getItem('inventory'));
+        let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
         inventory.splice(index, 1);
         localStorage.setItem('inventory', JSON.stringify(inventory));
         loadInventory();
     }
 }
 
-function showImportModal() {
-    const modalElement = document.getElementById('importModal');
-    if (!modalElement) {
-        console.error('Modal element not found');
-        return;
-    }
-    // Clear previous inputs
-    document.getElementById('fileInput').value = '';
-    document.getElementById('dataInput').value = '';
-    
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
-}
-
 function processData() {
-    try {
-        const fileInput = document.getElementById('fileInput');
-        const dataInput = document.getElementById('dataInput');
-        
-        if (fileInput.files.length > 0) {
-            processFile(fileInput.files[0]);
-        } else if (dataInput.value.trim() !== '') {
-            processPastedData(dataInput.value);
-        } else {
-            alert('Please either upload a file or paste data');
-        }
-    } catch (error) {
-        console.error('Error processing data:', error);
-        alert('An error occurred while processing the data. Please check the format and try again.');
+    const fileInput = document.getElementById('fileInput');
+    const dataInput = document.getElementById('dataInput');
+    
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            processImportedData(e.target.result);
+        };
+        reader.readAsText(file);
+    } else if (dataInput.value.trim()) {
+        processImportedData(dataInput.value);
+    } else {
+        alert('Please either upload a file or paste data');
     }
 }
 
-function processPastedData(data) {
+function processImportedData(data) {
     try {
         const rows = data.trim().split('\n');
-        const inventory = [];
-        let errorRows = [];
-        
-        const startIndex = rows[0].toLowerCase().includes('equipmenttype') ? 1 : 0;
-        
-        for (let i = startIndex; i < rows.length; i++) {
-            const columns = rows[i].split('\t').map(col => col.trim());
+        const headers = rows[0].toLowerCase().split('\t');
+        const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+        let updated = 0, added = 0;
+
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i].split('\t');
+            const item = {};
             
-            if (columns.length >= 11) {
-                inventory.push({
-                    equipmentType: columns[0],
-                    vendor: columns[1],
-                    brandModel: columns[2],
-                    assetNo: columns[3],
-                    serialNumber: columns[4],
-                    endDate: columns[5],
-                    startDate: columns[6],
-                    room: columns[7],
-                    roomNumber: columns[8],
-                    level: columns[9],
-                    lamphour: columns[10]
-                });
+            headers.forEach((header, index) => {
+                if (values[index]) {
+                    item[header.replace(/\s+/g, '')] = values[index].trim();
+                }
+            });
+
+            const existingIndex = inventory.findIndex(existing => 
+                existing.assetNo === item.assetno || 
+                existing.serialNumber === item.serialnumber
+            );
+
+            if (existingIndex >= 0) {
+                inventory[existingIndex] = {...inventory[existingIndex], ...item};
+                updated++;
             } else {
-                errorRows.push(i + 1);
+                inventory.push(item);
+                added++;
             }
         }
-        
-        if (errorRows.length > 0) {
-            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
-        }
-        
-        if (inventory.length > 0) {
-            updateInventory(inventory);
-        } else {
-            alert('No valid data found to import.');
-        }
-    } catch (error) {
-        console.error('Error processing pasted data:', error);
-        alert('Error processing data. Please check the format and try again.');
-    }
-}
 
-function processFile(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            processPastedData(e.target.result);
-        } catch (error) {
-            console.error('Error processing file:', error);
-            alert('Error processing file. Please check the file format and try again.');
-        }
-    };
-    reader.onerror = function(error) {
-        console.error('Error reading file:', error);
-        alert('Error reading file. Please try again.');
-    };
-    reader.readAsText(file);
-}
-
-function updateInventory(newInventory) {
-    try {
-        if (!Array.isArray(newInventory)) {
-            throw new Error('Invalid inventory format');
-        }
+        localStorage.setItem('inventory', JSON.stringify(inventory));
+        alert(`Updated ${updated} items and added ${added} new items.`);
         
-        localStorage.setItem('inventory', JSON.stringify(newInventory));
-        
-        const modalElement = document.getElementById('importModal');
-        const modal = bootstrap.Modal.getInstance(modalElement);
-        if (modal) {
-            modal.hide();
-        }
+        const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+        modal.hide();
         
         loadInventory();
-        alert('Inventory updated successfully!');
     } catch (error) {
-        console.error('Error updating inventory:', error);
-        alert('Error updating inventory. Please try again.');
+        alert('Error processing data. Please check the format and try again.');
+        console.error(error);
     }
-}
-
-function sortTable(columnIndex) {
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-
-    inventory.sort((a, b) => {
-        let valueA, valueB;
-        
-        // Get values based on column index
-        switch(columnIndex) {
-            case 0: valueA = a.equipmentType; valueB = b.equipmentType; break;
-            case 1: valueA = a.vendor; valueB = b.vendor; break;
-            case 2: valueA = a.brandModel; valueB = b.brandModel; break;
-            case 3: valueA = a.assetNo; valueB = b.assetNo; break;
-            case 4: valueA = a.serialNumber; valueB = b.serialNumber; break;
-            case 5: valueA = new Date(a.endDate); valueB = new Date(b.endDate); break;
-            case 6: valueA = new Date(a.startDate); valueB = new Date(b.startDate); break;
-            case 8: valueA = a.room; valueB = b.room; break;
-            case 9: valueA = a.roomNumber; valueB = b.roomNumber; break;
-            case 10: valueA = parseInt(a.level) || 0; valueB = parseInt(b.level) || 0; break;
-            case 11: valueA = parseInt(a.lamphour) || 0; valueB = parseInt(b.lamphour) || 0; break;
-            default: return 0;
-        }
-
-        if (valueA < valueB) return -1;
-        if (valueA > valueB) return 1;
-        return 0;
-    });
-
-    localStorage.setItem('inventory', JSON.stringify(inventory));
-    loadInventory();
 }
 
 function exportToCSV() {
     const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    
     if (inventory.length === 0) {
         alert('No data to export');
         return;
     }
 
-    const headers = ['Equipment Type,Vendor,Brand & Model,Asset No,Serial Number,End Date,Start Date,Duration in Use,Room,Room Number,Level,Lamp Hour'];
-    const csvData = inventory.map(item => {
-        const duration = calculateDuration(item.startDate);
-        return `${item.equipmentType},${item.vendor},${item.brandModel},${item.assetNo},${item.serialNumber},${item.endDate},${item.startDate},${duration},${item.room},${item.roomNumber},${item.level},${item.lamphour}`;
+    const headers = ['Equipment Type', 'Vendor', 'Brand & Model', 'Asset No', 
+                    'Serial Number', 'End Date', 'Start Date', 'Room', 
+                    'Room Number', 'Level', 'Lamp Hour'];
+    
+    const rows = [headers.join('\t')];
+    
+    inventory.forEach(item => {
+        const row = [
+            item.equipmentType,
+            item.vendor,
+            item.brandModel,
+            item.assetNo,
+            item.serialNumber,
+            item.endDate,
+            item.startDate,
+            item.room,
+            item.roomNumber,
+            item.level,
+            item.lamphour
+        ];
+        rows.push(row.join('\t'));
     });
 
-    const csvContent = headers.concat(csvData).join('\n');
+    const csvContent = rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     
-    if (navigator.msSaveBlob) { // IE 10+
+    if (navigator.msSaveBlob) {
         navigator.msSaveBlob(blob, 'inventory.csv');
     } else {
         link.href = URL.createObjectURL(blob);
