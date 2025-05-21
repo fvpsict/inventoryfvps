@@ -167,3 +167,181 @@ function deleteItem(index) {
         inventory.splice(index, 1);
         localStorage.setItem('inventory', JSON.stringify(inventory));
         loadInventory();
+    }
+}
+
+function showImportModal() {
+    const modalElement = document.getElementById('importModal');
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
+    // Clear previous inputs
+    document.getElementById('fileInput').value = '';
+    document.getElementById('dataInput').value = '';
+    
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+function processData() {
+    try {
+        const fileInput = document.getElementById('fileInput');
+        const dataInput = document.getElementById('dataInput');
+        
+        if (fileInput.files.length > 0) {
+            processFile(fileInput.files[0]);
+        } else if (dataInput.value.trim() !== '') {
+            processPastedData(dataInput.value);
+        } else {
+            alert('Please either upload a file or paste data');
+        }
+    } catch (error) {
+        console.error('Error processing data:', error);
+        alert('An error occurred while processing the data. Please check the format and try again.');
+    }
+}
+
+function processPastedData(data) {
+    try {
+        const rows = data.trim().split('\n');
+        const inventory = [];
+        let errorRows = [];
+        
+        const startIndex = rows[0].toLowerCase().includes('equipmenttype') ? 1 : 0;
+        
+        for (let i = startIndex; i < rows.length; i++) {
+            const columns = rows[i].split('\t').map(col => col.trim());
+            
+            if (columns.length >= 11) {
+                inventory.push({
+                    equipmentType: columns[0],
+                    vendor: columns[1],
+                    brandModel: columns[2],
+                    assetNo: columns[3],
+                    serialNumber: columns[4],
+                    endDate: columns[5],
+                    startDate: columns[6],
+                    room: columns[7],
+                    roomNumber: columns[8],
+                    level: columns[9],
+                    lamphour: columns[10]
+                });
+            } else {
+                errorRows.push(i + 1);
+            }
+        }
+        
+        if (errorRows.length > 0) {
+            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
+        }
+        
+        if (inventory.length > 0) {
+            updateInventory(inventory);
+        } else {
+            alert('No valid data found to import.');
+        }
+    } catch (error) {
+        console.error('Error processing pasted data:', error);
+        alert('Error processing data. Please check the format and try again.');
+    }
+}
+
+function processFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            processPastedData(e.target.result);
+        } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Error processing file. Please check the file format and try again.');
+        }
+    };
+    reader.onerror = function(error) {
+        console.error('Error reading file:', error);
+        alert('Error reading file. Please try again.');
+    };
+    reader.readAsText(file);
+}
+
+function updateInventory(newInventory) {
+    try {
+        if (!Array.isArray(newInventory)) {
+            throw new Error('Invalid inventory format');
+        }
+        
+        localStorage.setItem('inventory', JSON.stringify(newInventory));
+        
+        const modalElement = document.getElementById('importModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+        
+        loadInventory();
+        alert('Inventory updated successfully!');
+    } catch (error) {
+        console.error('Error updating inventory:', error);
+        alert('Error updating inventory. Please try again.');
+    }
+}
+
+function sortTable(columnIndex) {
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+
+    inventory.sort((a, b) => {
+        let valueA, valueB;
+        
+        // Get values based on column index
+        switch(columnIndex) {
+            case 0: valueA = a.equipmentType; valueB = b.equipmentType; break;
+            case 1: valueA = a.vendor; valueB = b.vendor; break;
+            case 2: valueA = a.brandModel; valueB = b.brandModel; break;
+            case 3: valueA = a.assetNo; valueB = b.assetNo; break;
+            case 4: valueA = a.serialNumber; valueB = b.serialNumber; break;
+            case 5: valueA = new Date(a.endDate); valueB = new Date(b.endDate); break;
+            case 6: valueA = new Date(a.startDate); valueB = new Date(b.startDate); break;
+            case 8: valueA = a.room; valueB = b.room; break;
+            case 9: valueA = a.roomNumber; valueB = b.roomNumber; break;
+            case 10: valueA = parseInt(a.level) || 0; valueB = parseInt(b.level) || 0; break;
+            case 11: valueA = parseInt(a.lamphour) || 0; valueB = parseInt(b.lamphour) || 0; break;
+            default: return 0;
+        }
+
+        if (valueA < valueB) return -1;
+        if (valueA > valueB) return 1;
+        return 0;
+    });
+
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    loadInventory();
+}
+
+function exportToCSV() {
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    
+    if (inventory.length === 0) {
+        alert('No data to export');
+        return;
+    }
+
+    const headers = ['Equipment Type,Vendor,Brand & Model,Asset No,Serial Number,End Date,Start Date,Duration in Use,Room,Room Number,Level,Lamp Hour'];
+    const csvData = inventory.map(item => {
+        const duration = calculateDuration(item.startDate);
+        return `${item.equipmentType},${item.vendor},${item.brandModel},${item.assetNo},${item.serialNumber},${item.endDate},${item.startDate},${duration},${item.room},${item.roomNumber},${item.level},${item.lamphour}`;
+    });
+
+    const csvContent = headers.concat(csvData).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(blob, 'inventory.csv');
+    } else {
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', 'inventory.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
