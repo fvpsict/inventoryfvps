@@ -37,12 +37,12 @@
                     <input type="text" class="form-control" id="serialNumber" required>
                 </div>
                 <div class="mb-3">
-                    <label for="category" class="form-label">Category</label>
-                    <input type="text" class="form-control" id="category" required>
+                    <label for="equipment type" class="form-label">Equipment Type</label>
+                    <input type="text" class="form-control" id="equipment type" required>
                 </div>
                 <div class="mb-3">
-                    <label for="itemName" class="form-label">Item Name</label>
-                    <input type="text" class="form-control" id="itemName" required>
+                    <label for="equipment brand & model" class="form-label">Equipment Brand & Model</label>
+                    <input type="text" class="form-control" id="equipment brand & model" required>
                 </div>
                 <div class="mb-3">
                     <label for="location" class="form-label">Location</label>
@@ -51,6 +51,14 @@
                 <div class="mb-3">
                     <label for="quantity" class="form-label">Quantity</label>
                     <input type="number" class="form-control" id="quantity" required>
+                </div>
+                <div class="mb-3">
+                    <label for="start date" class="form-label">Start Date</label>
+                    <input type="text" class="form-control" id="start date" required>
+                </div>
+                <div class="mb-3">
+                    <label for="end date" class="form-label">End Date</label>
+                    <input type="text" class="form-control" id="end date" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Add Item</button>
             </form>
@@ -66,11 +74,12 @@
                 <thead>
                     <tr>
                         <th>Serial Number</th>
-                        <th>Category</th>
-                        <th>Name</th>
+                        <th>Equipment Type</th>
+                        <th>Equipment Brand & Model</th>
                         <th>Location</th>
                         <th>Quantity</th>
-                        <th>Actions</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
                     </tr>
                 </thead>
                 <tbody id="inventoryTableBody">
