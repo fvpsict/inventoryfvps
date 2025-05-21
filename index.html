@@ -37,12 +37,12 @@
                     <input type="text" class="form-control" id="serialNumber" required>
                 </div>
                 <div class="mb-3">
-                    <label for="equipment type" class="form-label">Equipment Type</label>
-                    <input type="text" class="form-control" id="equipment type" required>
+                    <label for="equipmentType" class="form-label">Equipment Type</label>
+                    <input type="text" class="form-control" id="equipmentType" required>
                 </div>
                 <div class="mb-3">
-                    <label for="equipment brand & model" class="form-label">Equipment Brand & Model</label>
-                    <input type="text" class="form-control" id="equipment brand & model" required>
+                    <label for="equipmentBrandModel" class="form-label">Equipment Brand & Model</label>
+                    <input type="text" class="form-control" id="equipmentBrandModel" required>
                 </div>
                 <div class="mb-3">
                     <label for="location" class="form-label">Location</label>
@@ -53,12 +53,12 @@
                     <input type="number" class="form-control" id="quantity" required>
                 </div>
                 <div class="mb-3">
-                    <label for="start date" class="form-label">Start Date</label>
-                    <input type="text" class="form-control" id="start date" required>
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="startDate" required>
                 </div>
                 <div class="mb-3">
-                    <label for="end date" class="form-label">End Date</label>
-                    <input type="text" class="form-control" id="end date" required>
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="endDate" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Add Item</button>
             </form>
@@ -68,7 +68,9 @@
         <div id="inventoryList" style="display: none;">
             <h2>Inventory List</h2>
             <div class="mb-3">
-                <input type="text" class="form-control" id="searchInput" placeholder="Search inventory...">
+                <button class="btn btn-success" onclick="showImportModal()">Mass Update</button>
+                <button class="btn btn-primary ms-2" onclick="exportToCSV()">Export to CSV</button>
+                <input type="text" class="form-control mt-2" id="searchInput" placeholder="Search inventory...">
             </div>
             <table class="table">
                 <thead>
@@ -80,6 +82,7 @@
                         <th>Quantity</th>
                         <th>Start Date</th>
                         <th>End Date</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="inventoryTableBody">
@@ -93,6 +96,38 @@
             <p class="lead">Manage your inventory efficiently with our web-based system.</p>
             <hr class="my-4">
             <p>Choose an action from the navigation menu to get started.</p>
+        </div>
+
+        <!-- Mass Update Modal -->
+        <div class="modal fade" id="importModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Mass Update Inventory</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Upload CSV file</label>
+                            <input type="file" class="form-control" id="fileInput" accept=".csv">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Or Paste Data</label>
+                            <textarea class="form-control" id="dataInput" rows="10" 
+                                placeholder="Serial Number,Equipment Type,Equipment Brand & Model,Location,Quantity,Start Date,End Date"></textarea>
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>Format:</strong> Serial Number,Equipment Type,Equipment Brand & Model,Location,Quantity,Start Date,End Date
+                            <br>
+                            <strong>Example:</strong> SN001,Projector,Epson EB-L200F,Room 101,1,2024-01-01,2025-01-01
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="processData()">Update Inventory</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
