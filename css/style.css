@@ -1,3 +1,27 @@
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize inventory in localStorage if it doesn't exist
+    if (!localStorage.getItem('inventory')) {
+        localStorage.setItem('inventory', JSON.stringify([]));
+    }
+
+    // Make sure welcome message is visible and others are hidden on load
+    document.getElementById('welcomeMessage').style.display = 'block';
+    document.getElementById('addItemForm').style.display = 'none';
+    document.getElementById('inventoryList').style.display = 'none';
+
+    // Add click handlers to navigation links
+    document.querySelector('a[onclick="showInventory()"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        showInventory();
+    });
+
+    document.querySelector('a[onclick="showAddItem()"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        showAddItem();
+    });
+});
+
 /* Add some padding to the container */
 .container {
     padding-top: 20px;
