@@ -31,10 +31,11 @@ function showAddItem() {
 }
 
 function showInventory() {
+    console.log("Showing inventory"); // Debug line
     document.getElementById('addItemForm').style.display = 'none';
     document.getElementById('inventoryList').style.display = 'block';
     document.getElementById('welcomeMessage').style.display = 'none';
-    loadInventory();
+    loadInventory(); // This loads the inventory data
 }
 
 function addItem(event) {
