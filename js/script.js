@@ -61,8 +61,16 @@ function addItem(event) {
 }
 
 function loadInventory() {
+    console.log("Loading inventory"); // Debug line
     const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    console.log("Current inventory:", inventory); // Debug line
+    
     const tableBody = document.getElementById('inventoryTableBody');
+    if (!tableBody) {
+        console.error("Table body element not found!"); // Debug line
+        return;
+    }
+    
     tableBody.innerHTML = '';
 
     inventory.forEach((item, index) => {
