@@ -4,24 +4,20 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('inventory', JSON.stringify([]));
     }
 
-    // Add click handler to mass update button
-    const massUpdateBtn = document.querySelector('.btn-success');
-    if (massUpdateBtn) {
-        massUpdateBtn.addEventListener('click', function() {
-            console.log('Mass Update button clicked');
-            showImportModal();
-        });
-    } else {
-        console.error('Mass Update button not found');
-    }
+    // Make headers sortable
+    const headers = document.querySelectorAll('table thead th');
+    headers.forEach((header, index) => {
+        if (index < headers.length - 1) { // Don't make the Actions column sortable
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => sortTable(index));
+            header.title = 'Click to sort';
+        }
+    });
 
-    // Check if modal exists
-    const modalElement = document.getElementById('importModal');
-    if (!modalElement) {
-        console.error('Modal element not found');
-    } else {
-        console.log('Modal element found');
-    }
+    // Add search functionality
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        loadInventory(this.value);
+    });
 });
 
 function showAddItem() {
@@ -31,24 +27,27 @@ function showAddItem() {
 }
 
 function showInventory() {
-    console.log("Showing inventory"); // Debug line
     document.getElementById('addItemForm').style.display = 'none';
     document.getElementById('inventoryList').style.display = 'block';
     document.getElementById('welcomeMessage').style.display = 'none';
-    loadInventory(); // This loads the inventory data
+    loadInventory();
 }
 
 function addItem(event) {
     event.preventDefault();
 
     const item = {
-        serialNumber: document.getElementById('serialNumber').value,
         equipmentType: document.getElementById('equipmentType').value,
-        equipmentBrandModel: document.getElementById('equipmentBrandModel').value,
-        location: document.getElementById('location').value,
-        quantity: document.getElementById('quantity').value,
+        vendor: document.getElementById('vendor').value,
+        brandModel: document.getElementById('brandModel').value,
+        assetNo: document.getElementById('assetNo').value,
+        serialNumber: document.getElementById('serialNumber').value,
+        endDate: document.getElementById('endDate').value,
         startDate: document.getElementById('startDate').value,
-        endDate: document.getElementById('endDate').value
+        room: document.getElementById('room').value,
+        roomNumber: document.getElementById('roomNumber').value,
+        level: document.getElementById('level').value,
+        lamphour: document.getElementById('lamphour').value
     };
 
     let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
@@ -60,29 +59,71 @@ function addItem(event) {
     showInventory();
 }
 
-function loadInventory() {
-    console.log("Loading inventory"); // Debug line
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    console.log("Current inventory:", inventory); // Debug line
-    
-    const tableBody = document.getElementById('inventoryTableBody');
-    if (!tableBody) {
-        console.error("Table body element not found!"); // Debug line
-        return;
+function calculateDuration(startDate) {
+    try {
+        const start = new Date(startDate);
+        const today = new Date();
+        
+        const diffTime = Math.abs(today - start);
+        const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        const years = Math.floor(days / 365);
+        const months = Math.floor((days % 365) / 30);
+        const remainingDays = days % 30;
+        
+        let duration = '';
+        if (years > 0) {
+            duration += `${years} year${years > 1 ? 's' : ''} `;
+        }
+        if (months > 0) {
+            duration += `${months} month${months > 1 ? 's' : ''} `;
+        }
+        if (remainingDays > 0 || duration === '') {
+            duration += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+        }
+        
+        return duration.trim();
+    } catch (error) {
+        console.error('Error calculating duration:', error);
+        return 'Invalid date';
     }
+}
+
+function loadInventory(searchTerm = '') {
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     
+    if (searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+        inventory = inventory.filter(item => 
+            item.equipmentType.toLowerCase().includes(searchTerm) ||
+            item.vendor.toLowerCase().includes(searchTerm) ||
+            item.brandModel.toLowerCase().includes(searchTerm) ||
+            item.assetNo.toLowerCase().includes(searchTerm) ||
+            item.serialNumber.toLowerCase().includes(searchTerm) ||
+            item.room.toLowerCase().includes(searchTerm) ||
+            item.roomNumber.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    const tableBody = document.getElementById('inventoryTableBody');
     tableBody.innerHTML = '';
 
     inventory.forEach((item, index) => {
+        const duration = calculateDuration(item.startDate);
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${item.serialNumber}</td>
             <td>${item.equipmentType}</td>
-            <td>${item.equipmentBrandModel}</td>
-            <td>${item.location}</td>
-            <td>${item.quantity}</td>
-            <td>${item.startDate}</td>
+            <td>${item.vendor}</td>
+            <td>${item.brandModel}</td>
+            <td>${item.assetNo}</td>
+            <td>${item.serialNumber}</td>
             <td>${item.endDate}</td>
+            <td>${item.startDate}</td>
+            <td>${duration}</td>
+            <td>${item.room}</td>
+            <td>${item.roomNumber}</td>
+            <td>${item.level}</td>
+            <td>${item.lamphour}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="editItem(${index})">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteItem(${index})">Delete</button>
@@ -96,30 +137,28 @@ function editItem(index) {
     const inventory = JSON.parse(localStorage.getItem('inventory'));
     const item = inventory[index];
     
-    const newSerialNumber = prompt('Enter new Serial Number:', item.serialNumber);
-    const newEquipmentType = prompt('Enter new Equipment Type:', item.equipmentType);
-    const newBrandModel = prompt('Enter new Brand & Model:', item.equipmentBrandModel);
-    const newLocation = prompt('Enter new Location:', item.location);
-    const newQuantity = prompt('Enter new Quantity:', item.quantity);
-    const newStartDate = prompt('Enter new Start Date (YYYY-MM-DD):', item.startDate);
-    const newEndDate = prompt('Enter new End Date (YYYY-MM-DD):', item.endDate);
-    
-    if (newSerialNumber !== null && newEquipmentType !== null && newBrandModel !== null && 
-        newLocation !== null && newQuantity !== null && newStartDate !== null && newEndDate !== null) {
-        
-        inventory[index] = {
-            serialNumber: newSerialNumber,
-            equipmentType: newEquipmentType,
-            equipmentBrandModel: newBrandModel,
-            location: newLocation,
-            quantity: newQuantity,
-            startDate: newStartDate,
-            endDate: newEndDate
-        };
-        
-        localStorage.setItem('inventory', JSON.stringify(inventory));
-        loadInventory();
+    const newItem = {
+        equipmentType: prompt('Enter new Equipment Type:', item.equipmentType),
+        vendor: prompt('Enter new Vendor:', item.vendor),
+        brandModel: prompt('Enter new Brand & Model:', item.brandModel),
+        assetNo: prompt('Enter new Asset No:', item.assetNo),
+        serialNumber: prompt('Enter new Serial Number:', item.serialNumber),
+        endDate: prompt('Enter new End Date (YYYY-MM-DD):', item.endDate),
+        startDate: prompt('Enter new Start Date (YYYY-MM-DD):', item.startDate),
+        room: prompt('Enter new Room:', item.room),
+        roomNumber: prompt('Enter new Room Number:', item.roomNumber),
+        level: prompt('Enter new Level:', item.level),
+        lamphour: prompt('Enter new Lamp Hour:', item.lamphour)
+    };
+
+    // Check if any field was cancelled
+    if (Object.values(newItem).includes(null)) {
+        return; // Exit if any field was cancelled
     }
+
+    inventory[index] = newItem;
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    loadInventory();
 }
 
 function deleteItem(index) {
@@ -128,129 +167,3 @@ function deleteItem(index) {
         inventory.splice(index, 1);
         localStorage.setItem('inventory', JSON.stringify(inventory));
         loadInventory();
-    }
-}
-
-function showImportModal() {
-    const modalElement = document.getElementById('importModal');
-    if (!modalElement) {
-        console.error('Modal element not found');
-        return;
-    }
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
-}
-
-function processData() {
-    const fileInput = document.getElementById('fileInput');
-    const dataInput = document.getElementById('dataInput');
-    
-    if (fileInput.files.length > 0) {
-        processFile(fileInput.files[0]);
-    } else if (dataInput.value.trim() !== '') {
-        processPastedData(dataInput.value);
-    } else {
-        alert('Please either upload a file or paste data');
-    }
-}
-
-function processPastedData(data) {
-    const rows = data.trim().split('\n');
-    const inventory = [];
-    
-    for (let i = 0; i < rows.length; i++) {
-        if (i === 0 && rows[i].toLowerCase().includes('serial number')) continue; // Skip header row
-        
-        const columns = rows[i].split(',').map(col => col.trim());
-        if (columns.length >= 7) {
-            inventory.push({
-                serialNumber: columns[0],
-                equipmentType: columns[1],
-                equipmentBrandModel: columns[2],
-                location: columns[3],
-                quantity: columns[4],
-                startDate: columns[5],
-                endDate: columns[6]
-            });
-        }
-    }
-    
-    updateInventory(inventory);
-}
-
-function processFile(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        processPastedData(e.target.result);
-    };
-    reader.readAsText(file);
-}
-
-function updateInventory(newInventory) {
-    localStorage.setItem('inventory', JSON.stringify(newInventory));
-    loadInventory();
-    const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
-    modal.hide();
-    alert('Inventory updated successfully!');
-}
-
-// Search functionality
-document.getElementById('searchInput').addEventListener('keyup', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    const filteredInventory = inventory.filter(item => 
-        item.serialNumber.toLowerCase().includes(searchTerm) ||
-        item.equipmentType.toLowerCase().includes(searchTerm) ||
-        item.equipmentBrandModel.toLowerCase().includes(searchTerm) ||
-        item.location.toLowerCase().includes(searchTerm)
-    );
-
-    const tableBody = document.getElementById('inventoryTableBody');
-    tableBody.innerHTML = '';
-
-    filteredInventory.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${item.serialNumber}</td>
-            <td>${item.equipmentType}</td>
-            <td>${item.equipmentBrandModel}</td>
-            <td>${item.location}</td>
-            <td>${item.quantity}</td>
-            <td>${item.startDate}</td>
-            <td>${item.endDate}</td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="editItem(${index})">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteItem(${index})">Delete</button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-});
-
-function exportToCSV() {
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    
-    if (inventory.length === 0) {
-        alert('No data to export');
-        return;
-    }
-
-    const headers = ['Serial Number,Equipment Type,Equipment Brand & Model,Location,Quantity,Start Date,End Date'];
-    const csvData = inventory.map(item => {
-        return `${item.serialNumber},${item.equipmentType},${item.equipmentBrandModel},${item.location},${item.quantity},${item.startDate},${item.endDate}`;
-    });
-
-    const csvContent = headers.concat(csvData).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    
-    if (navigator.msSaveBlob) { // IE 10+
-        navigator.msSaveBlob(blob, 'inventory.csv');
-    } else {
-        link.href = URL.createObjectURL(blob);
-        link.setAttribute('download', 'inventory.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-}
