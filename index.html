@@ -1,170 +1,263 @@
-function processPastedData(data) {
-    try {
-        const rows = data.trim().split('\n');
-        if (rows.length < 2) { // Need at least header and one data row
-            alert('No data found to import');
-            return false;
-        }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FVPS Inventory System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">FVPS Inventory System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showAddItem()">Add Item</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showInventory()">View Inventory</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-        // Get and process headers
-        const headers = rows[0].split('\t').map(header => header.trim().toLowerCase());
-        const headerIndexMap = {
-            'equipmenttype': -1,
-            'vendor': -1,
-            'brandmodel': -1,
-            'assetno': -1,
-            'serialnumber': -1,
-            'enddate': -1,
-            'startdate': -1,
-            'room': -1,
-            'room number': -1,
-            'level': -1,
-            'lamphour': -1
-        };
+    <div class="container mt-4">
+        <!-- Add Item Form -->
+        <div id="addItemForm" style="display: none;">
+            <h2>Add New Item</h2>
+            <form id="inventoryForm" onsubmit="return addItem(event)">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="equipmentType" class="form-label">Equipment Type</label>
+                            <input type="text" class="form-control" id="equipmentType" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="vendor" class="form-label">Vendor</label>
+                            <input type="text" class="form-control" id="vendor" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="brandModel" class="form-label">Brand & Model</label>
+                            <input type="text" class="form-control" id="brandModel" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="assetNo" class="form-label">Asset No</label>
+                            <input type="text" class="form-control" id="assetNo" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="serialNumber" class="form-label">Serial Number</label>
+                            <input type="text" class="form-control" id="serialNumber" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="endDate" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="startDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="room" class="form-label">Room</label>
+                            <input type="text" class="form-control" id="room" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomNumber" class="form-label">Room Number</label>
+                            <input type="text" class="form-control" id="roomNumber" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="level" class="form-label">Level</label>
+                            <input type="number" class="form-control" id="level" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="lamphour" class="form-label">Lamp Hour</label>
+                            <input type="number" class="form-control" id="lamphour" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Add Item</button>
+                        <button type="button" class="btn btn-secondary" onclick="showInventory()">Cancel</button>
+                    </div>
+                </div>
+            </form>
+        </div>
 
-        // Map header indices
-        headers.forEach((header, index) => {
-            if (headerIndexMap.hasOwnProperty(header.replace(/\s+/g, ''))) {
-                headerIndexMap[header.replace(/\s+/g, '')] = index;
-            }
-        });
+        <!-- Inventory List -->
+        <div id="inventoryList" style="display: none;">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h2>Inventory List</h2>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-success" onclick="showImportModal()">Mass Update</button>
+                    <button class="btn btn-primary" onclick="exportToCSV()">Export to CSV</button>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search inventory...">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Equipment Type</th>
+                            <th>Vendor</th>
+                            <th>Brand & Model</th>
+                            <th>Asset No</th>
+                            <th>Serial Number</th>
+                            <th>End Date</th>
+                            <th>Start Date</th>
+                            <th>Duration in Use</th>
+                            <th>Room</th>
+                            <th>Room Number</th>
+                            <th>Level</th>
+                            <th>Lamp Hour</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-        // Get existing inventory
-        const existingInventory = JSON.parse(localStorage.getItem('inventory')) || [];
-        const newInventory = [...existingInventory];
-        let errorRows = [];
-        let updatedCount = 0;
-        let addedCount = 0;
+        <!-- Welcome Message -->
+        <div id="welcomeMessage" style="display: block;">
+            <div class="text-center">
+                <h1 class="display-4">Welcome to FVPS Inventory System</h1>
+                <p class="lead">Manage your inventory efficiently with our web-based system.</p>
+                <hr class="my-4">
+                <p>Choose an action from the navigation menu to get started.</p>
+                <div class="mt-4">
+                    <button class="btn btn-primary btn-lg me-2" onclick="showAddItem()">Add New Item</button>
+                    <button class="btn btn-secondary btn-lg" onclick="showInventory()">View Inventory</button>
+                </div>
+            </div>
+        </div>
 
-        // Process data rows
-        for (let i = 1; i < rows.length; i++) {
-            const columns = rows[i].split('\t').map(col => col.trim());
-            if (columns.length < headers.length) {
-                errorRows.push(i + 1);
-                continue;
-            }
+        <!-- Mass Update Modal -->
+        <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="importModalLabel">Mass Update Inventory</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Upload CSV file</label>
+                            <input type="file" class="form-control" id="fileInput" accept=".csv,.txt">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Or Paste Data Here</label>
+                            <textarea class="form-control" id="dataInput" rows="10" 
+                                placeholder="EquipmentType&#9;Vendor&#9;BrandModel&#9;AssetNo&#9;SerialNumber&#9;EndDate&#9;StartDate&#9;Room&#9;Room Number&#9;Level&#9;Lamphour"></textarea>
+                        </div>
+                        <div class="alert alert-info">
+                            <h6>Instructions:</h6>
+                            <p class="mb-2">1. Data should be tab-separated (copy from Excel and paste directly)</p>
+                            <p class="mb-2">2. First row should contain headers (case-insensitive)</p>
+                            <p class="mb-2">3. Only include the columns you want to update</p>
+                            <p class="mb-2">4. Items are matched by Asset No or Serial Number</p>
+                            <p class="mb-0">5. New items will be added if no match is found</p>
+                        </div>
+                        <div class="alert alert-secondary">
+                            <strong>Available Headers:</strong><br>
+                            EquipmentType, Vendor, BrandModel, AssetNo, SerialNumber, EndDate, StartDate, Room, Room Number, Level, Lamphour
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="processData()">Update Inventory</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            // Create item object with only the fields present in headers
-            const item = {};
-            let hasData = false;
-            
-            // Map data according to headers
-            if (headerIndexMap.equipmenttype !== -1) {
-                item.equipmentType = columns[headerIndexMap.equipmenttype];
-                hasData = true;
-            }
-            if (headerIndexMap.vendor !== -1) {
-                item.vendor = columns[headerIndexMap.vendor];
-                hasData = true;
-            }
-            if (headerIndexMap.brandmodel !== -1) {
-                item.brandModel = columns[headerIndexMap.brandmodel];
-                hasData = true;
-            }
-            if (headerIndexMap.assetno !== -1) {
-                item.assetNo = columns[headerIndexMap.assetno];
-                hasData = true;
-            }
-            if (headerIndexMap.serialnumber !== -1) {
-                item.serialNumber = columns[headerIndexMap.serialnumber];
-                hasData = true;
-            }
-            if (headerIndexMap.enddate !== -1) {
-                item.endDate = columns[headerIndexMap.enddate];
-                hasData = true;
-            }
-            if (headerIndexMap.startdate !== -1) {
-                item.startDate = columns[headerIndexMap.startdate];
-                hasData = true;
-            }
-            if (headerIndexMap.room !== -1) {
-                item.room = columns[headerIndexMap.room];
-                hasData = true;
-            }
-            if (headerIndexMap['room number'] !== -1) {
-                item.roomNumber = columns[headerIndexMap['room number']];
-                hasData = true;
-            }
-            if (headerIndexMap.level !== -1) {
-                item.level = columns[headerIndexMap.level];
-                hasData = true;
-            }
-            if (headerIndexMap.lamphour !== -1) {
-                item.lamphour = columns[headerIndexMap.lamphour];
-                hasData = true;
-            }
+        <!-- Edit Item Modal -->
+        <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModalLabel">Edit Item</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editForm">
+                            <input type="hidden" id="editIndex">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="editEquipmentType" class="form-label">Equipment Type</label>
+                                        <input type="text" class="form-control" id="editEquipmentType" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editVendor" class="form-label">Vendor</label>
+                                        <input type="text" class="form-control" id="editVendor" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editBrandModel" class="form-label">Brand & Model</label>
+                                        <input type="text" class="form-control" id="editBrandModel" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editAssetNo" class="form-label">Asset No</label>
+                                        <input type="text" class="form-control" id="editAssetNo" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editSerialNumber" class="form-label">Serial Number</label>
+                                        <input type="text" class="form-control" id="editSerialNumber" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editEndDate" class="form-label">End Date</label>
+                                        <input type="date" class="form-control" id="editEndDate" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="editStartDate" class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="editStartDate" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editRoom" class="form-label">Room</label>
+                                        <input type="text" class="form-control" id="editRoom" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editRoomNumber" class="form-label">Room Number</label>
+                                        <input type="text" class="form-control" id="editRoomNumber" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editLevel" class="form-label">Level</label>
+                                        <input type="number" class="form-control" id="editLevel" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editLamphour" class="form-label">Lamp Hour</label>
+                                        <input type="number" class="form-control" id="editLamphour" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            if (!hasData) {
-                errorRows.push(i + 1);
-                continue;
-            }
-
-            // Try to find existing item by Asset No or Serial Number
-            const existingItemIndex = newInventory.findIndex(existing => 
-                (item.assetNo && existing.assetNo === item.assetNo) || 
-                (item.serialNumber && existing.serialNumber === item.serialNumber)
-            );
-
-            if (existingItemIndex !== -1) {
-                // Update existing item with new data while preserving existing fields
-                const updatedItem = { ...newInventory[existingItemIndex] };
-                Object.keys(item).forEach(key => {
-                    if (item[key]) {
-                        updatedItem[key] = item[key];
-                    }
-                });
-                newInventory[existingItemIndex] = updatedItem;
-                updatedCount++;
-            } else {
-                // For new items, ensure all required fields have default values
-                const newItem = {
-                    equipmentType: item.equipmentType || '',
-                    vendor: item.vendor || '',
-                    brandModel: item.brandModel || '',
-                    assetNo: item.assetNo || '',
-                    serialNumber: item.serialNumber || '',
-                    endDate: item.endDate || '',
-                    startDate: item.startDate || '',
-                    room: item.room || '',
-                    roomNumber: item.roomNumber || '',
-                    level: item.level || '',
-                    lamphour: item.lamphour || ''
-                };
-                newInventory.push(newItem);
-                addedCount++;
-            }
-        }
-
-        if (errorRows.length > 0) {
-            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
-        }
-
-        if (updatedCount > 0 || addedCount > 0) {
-            localStorage.setItem('inventory', JSON.stringify(newInventory));
-            alert(`Update successful!\nUpdated items: ${updatedCount}\nNew items added: ${addedCount}`);
-            
-            // Close the modal
-            const modalElement = document.getElementById('importModal');
-            const modal = bootstrap.Modal.getInstance(modalElement);
-            if (modal) {
-                modal.hide();
-            }
-
-            // Clear inputs
-            document.getElementById('fileInput').value = '';
-            document.getElementById('dataInput').value = '';
-
-            // Show inventory
-            showInventory();
-            return true;
-        } else {
-            alert('No valid data found to import.');
-            return false;
-        }
-
-    } catch (error) {
-        console.error('Error processing pasted data:', error);
-        alert('Error processing data. Please check the format and try again.');
-        return false;
-    }
-}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
