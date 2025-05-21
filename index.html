@@ -1,160 +1,170 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FVPS Inventory System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">FVPS Inventory System</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showAddItem()">Add Item</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showInventory()">View Inventory</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+function processPastedData(data) {
+    try {
+        const rows = data.trim().split('\n');
+        if (rows.length < 2) { // Need at least header and one data row
+            alert('No data found to import');
+            return false;
+        }
 
-    <div class="container mt-4">
-        <!-- Add Item Form -->
-        <div id="addItemForm" style="display: none;">
-            <h2>Add New Item</h2>
-            <form id="inventoryForm" onsubmit="return addItem(event)">
-                <div class="mb-3">
-                    <label for="equipmentType" class="form-label">Equipment Type</label>
-                    <input type="text" class="form-control" id="equipmentType" required>
-                </div>
-                <div class="mb-3">
-                    <label for="vendor" class="form-label">Vendor</label>
-                    <input type="text" class="form-control" id="vendor" required>
-                </div>
-                <div class="mb-3">
-                    <label for="brandModel" class="form-label">Brand & Model</label>
-                    <input type="text" class="form-control" id="brandModel" required>
-                </div>
-                <div class="mb-3">
-                    <label for="assetNo" class="form-label">Asset No</label>
-                    <input type="text" class="form-control" id="assetNo" required>
-                </div>
-                <div class="mb-3">
-                    <label for="serialNumber" class="form-label">Serial Number</label>
-                    <input type="text" class="form-control" id="serialNumber" required>
-                </div>
-                <div class="mb-3">
-                    <label for="endDate" class="form-label">End Date</label>
-                    <input type="date" class="form-control" id="endDate" required>
-                </div>
-                <div class="mb-3">
-                    <label for="startDate" class="form-label">Start Date</label>
-                    <input type="date" class="form-control" id="startDate" required>
-                </div>
-                <div class="mb-3">
-                    <label for="room" class="form-label">Room</label>
-                    <input type="text" class="form-control" id="room" required>
-                </div>
-                <div class="mb-3">
-                    <label for="roomNumber" class="form-label">Room Number</label>
-                    <input type="text" class="form-control" id="roomNumber" required>
-                </div>
-                <div class="mb-3">
-                    <label for="level" class="form-label">Level</label>
-                    <input type="number" class="form-control" id="level" required>
-                </div>
-                <div class="mb-3">
-                    <label for="lamphour" class="form-label">Lamp Hour</label>
-                    <input type="number" class="form-control" id="lamphour" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Add Item</button>
-            </form>
-        </div>
+        // Get and process headers
+        const headers = rows[0].split('\t').map(header => header.trim().toLowerCase());
+        const headerIndexMap = {
+            'equipmenttype': -1,
+            'vendor': -1,
+            'brandmodel': -1,
+            'assetno': -1,
+            'serialnumber': -1,
+            'enddate': -1,
+            'startdate': -1,
+            'room': -1,
+            'room number': -1,
+            'level': -1,
+            'lamphour': -1
+        };
 
-        <!-- Inventory List -->
-        <div id="inventoryList" style="display: none;">
-            <h2>Inventory List</h2>
-            <div class="mb-3">
-                <button class="btn btn-success" onclick="showImportModal()">Mass Update</button>
-                <button class="btn btn-primary ms-2" onclick="exportToCSV()">Export to CSV</button>
-                <input type="text" class="form-control mt-2" id="searchInput" placeholder="Search inventory...">
-            </div>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Equipment Type</th>
-                            <th>Vendor</th>
-                            <th>Brand & Model</th>
-                            <th>Asset No</th>
-                            <th>Serial Number</th>
-                            <th>End Date</th>
-                            <th>Start Date</th>
-                            <th>Duration in Use</th>
-                            <th>Room</th>
-                            <th>Room Number</th>
-                            <th>Level</th>
-                            <th>Lamp Hour</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryTableBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        // Map header indices
+        headers.forEach((header, index) => {
+            if (headerIndexMap.hasOwnProperty(header.replace(/\s+/g, ''))) {
+                headerIndexMap[header.replace(/\s+/g, '')] = index;
+            }
+        });
 
-        <!-- Welcome Message -->
-        <div id="welcomeMessage" style="display: block;">
-            <h1 class="display-4">Welcome to FVPS Inventory System</h1>
-            <p class="lead">Manage your inventory efficiently with our web-based system.</p>
-            <hr class="my-4">
-            <p>Choose an action from the navigation menu to get started.</p>
-        </div>
+        // Get existing inventory
+        const existingInventory = JSON.parse(localStorage.getItem('inventory')) || [];
+        const newInventory = [...existingInventory];
+        let errorRows = [];
+        let updatedCount = 0;
+        let addedCount = 0;
 
-        <!-- Mass Update Modal -->
-        <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="importModalLabel">Mass Update Inventory</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Upload CSV file</label>
-                            <input type="file" class="form-control" id="fileInput" accept=".csv">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Or Paste Data Here</label>
-                            <textarea class="form-control" id="dataInput" rows="10" 
-                                placeholder="EquipmentType&#9;Vendor&#9;BrandModel&#9;AssetNo&#9;SerialNumber&#9;EndDate&#9;StartDate&#9;Room&#9;Room Number&#9;Level&#9;Lamphour"></textarea>
-                        </div>
-                        <div class="alert alert-info">
-                            <strong>Format:</strong> EquipmentType&#9;Vendor&#9;BrandModel&#9;AssetNo&#9;SerialNumber&#9;EndDate&#9;StartDate&#9;Room&#9;Room Number&#9;Level&#9;Lamphour
-                            <br>
-                            <strong>Example:</strong> Projector&#9;Epson&#9;EB-L200F&#9;P001&#9;SN001&#9;2025-01-01&#9;2024-01-01&#9;Classroom&#9;101&#9;1&#9;500
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" onclick="processData()">Update Inventory</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        // Process data rows
+        for (let i = 1; i < rows.length; i++) {
+            const columns = rows[i].split('\t').map(col => col.trim());
+            if (columns.length < headers.length) {
+                errorRows.push(i + 1);
+                continue;
+            }
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/script.js"></script>
-</body>
-</html>
+            // Create item object with only the fields present in headers
+            const item = {};
+            let hasData = false;
+            
+            // Map data according to headers
+            if (headerIndexMap.equipmenttype !== -1) {
+                item.equipmentType = columns[headerIndexMap.equipmenttype];
+                hasData = true;
+            }
+            if (headerIndexMap.vendor !== -1) {
+                item.vendor = columns[headerIndexMap.vendor];
+                hasData = true;
+            }
+            if (headerIndexMap.brandmodel !== -1) {
+                item.brandModel = columns[headerIndexMap.brandmodel];
+                hasData = true;
+            }
+            if (headerIndexMap.assetno !== -1) {
+                item.assetNo = columns[headerIndexMap.assetno];
+                hasData = true;
+            }
+            if (headerIndexMap.serialnumber !== -1) {
+                item.serialNumber = columns[headerIndexMap.serialnumber];
+                hasData = true;
+            }
+            if (headerIndexMap.enddate !== -1) {
+                item.endDate = columns[headerIndexMap.enddate];
+                hasData = true;
+            }
+            if (headerIndexMap.startdate !== -1) {
+                item.startDate = columns[headerIndexMap.startdate];
+                hasData = true;
+            }
+            if (headerIndexMap.room !== -1) {
+                item.room = columns[headerIndexMap.room];
+                hasData = true;
+            }
+            if (headerIndexMap['room number'] !== -1) {
+                item.roomNumber = columns[headerIndexMap['room number']];
+                hasData = true;
+            }
+            if (headerIndexMap.level !== -1) {
+                item.level = columns[headerIndexMap.level];
+                hasData = true;
+            }
+            if (headerIndexMap.lamphour !== -1) {
+                item.lamphour = columns[headerIndexMap.lamphour];
+                hasData = true;
+            }
+
+            if (!hasData) {
+                errorRows.push(i + 1);
+                continue;
+            }
+
+            // Try to find existing item by Asset No or Serial Number
+            const existingItemIndex = newInventory.findIndex(existing => 
+                (item.assetNo && existing.assetNo === item.assetNo) || 
+                (item.serialNumber && existing.serialNumber === item.serialNumber)
+            );
+
+            if (existingItemIndex !== -1) {
+                // Update existing item with new data while preserving existing fields
+                const updatedItem = { ...newInventory[existingItemIndex] };
+                Object.keys(item).forEach(key => {
+                    if (item[key]) {
+                        updatedItem[key] = item[key];
+                    }
+                });
+                newInventory[existingItemIndex] = updatedItem;
+                updatedCount++;
+            } else {
+                // For new items, ensure all required fields have default values
+                const newItem = {
+                    equipmentType: item.equipmentType || '',
+                    vendor: item.vendor || '',
+                    brandModel: item.brandModel || '',
+                    assetNo: item.assetNo || '',
+                    serialNumber: item.serialNumber || '',
+                    endDate: item.endDate || '',
+                    startDate: item.startDate || '',
+                    room: item.room || '',
+                    roomNumber: item.roomNumber || '',
+                    level: item.level || '',
+                    lamphour: item.lamphour || ''
+                };
+                newInventory.push(newItem);
+                addedCount++;
+            }
+        }
+
+        if (errorRows.length > 0) {
+            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
+        }
+
+        if (updatedCount > 0 || addedCount > 0) {
+            localStorage.setItem('inventory', JSON.stringify(newInventory));
+            alert(`Update successful!\nUpdated items: ${updatedCount}\nNew items added: ${addedCount}`);
+            
+            // Close the modal
+            const modalElement = document.getElementById('importModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+
+            // Clear inputs
+            document.getElementById('fileInput').value = '';
+            document.getElementById('dataInput').value = '';
+
+            // Show inventory
+            showInventory();
+            return true;
+        } else {
+            alert('No valid data found to import.');
+            return false;
+        }
+
+    } catch (error) {
+        console.error('Error processing pasted data:', error);
+        alert('Error processing data. Please check the format and try again.');
+        return false;
+    }
+}
