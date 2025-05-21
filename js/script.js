@@ -1,18 +1,25 @@
-// Initialize inventory on page load
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    loadInventory();
-    setupSearchListener();
+    if (!localStorage.getItem('inventory')) {
+        localStorage.setItem('inventory', JSON.stringify([]));
+    }
+
+    // Make headers sortable
+    const headers = document.querySelectorAll('table thead th');
+    headers.forEach((header, index) => {
+        if (index < headers.length - 1) { // Don't make the Actions column sortable
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => sortTable(index));
+            header.title = 'Click to sort';
+        }
+    });
+
+    // Add search functionality
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        loadInventory(this.value);
+    });
 });
 
-// Setup search functionality
-function setupSearchListener() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', function() {
-        loadInventory(this.value.toLowerCase());
-    });
-}
-
-// Navigation Functions
 function showAddItem() {
     document.getElementById('addItemForm').style.display = 'block';
     document.getElementById('inventoryList').style.display = 'none';
@@ -26,15 +33,9 @@ function showInventory() {
     loadInventory();
 }
 
-function showImportModal() {
-    const modal = new bootstrap.Modal(document.getElementById('importModal'));
-    modal.show();
-}
-
-// Inventory Management Functions
 function addItem(event) {
     event.preventDefault();
-    
+
     const item = {
         equipmentType: document.getElementById('equipmentType').value,
         vendor: document.getElementById('vendor').value,
@@ -50,55 +51,75 @@ function addItem(event) {
     };
 
     let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    
-    // Check for duplicate Asset No or Serial Number
-    const isDuplicate = inventory.some(existingItem => 
-        existingItem.assetNo === item.assetNo || 
-        existingItem.serialNumber === item.serialNumber
-    );
-
-    if (isDuplicate) {
-        alert('An item with this Asset No or Serial Number already exists!');
-        return false;
-    }
-
     inventory.push(item);
     localStorage.setItem('inventory', JSON.stringify(inventory));
-    
+
     document.getElementById('inventoryForm').reset();
+    alert('Item added successfully!');
     showInventory();
-    return false;
+}
+
+function calculateDuration(startDate) {
+    try {
+        const start = new Date(startDate);
+        const today = new Date();
+        
+        const diffTime = Math.abs(today - start);
+        const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        const years = Math.floor(days / 365);
+        const months = Math.floor((days % 365) / 30);
+        const remainingDays = days % 30;
+        
+        let duration = '';
+        if (years > 0) {
+            duration += `${years} year${years > 1 ? 's' : ''} `;
+        }
+        if (months > 0) {
+            duration += `${months} month${months > 1 ? 's' : ''} `;
+        }
+        if (remainingDays > 0 || duration === '') {
+            duration += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+        }
+        
+        return duration.trim();
+    } catch (error) {
+        console.error('Error calculating duration:', error);
+        return 'Invalid date';
+    }
 }
 
 function loadInventory(searchTerm = '') {
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    
+    if (searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+        inventory = inventory.filter(item => 
+            item.equipmentType.toLowerCase().includes(searchTerm) ||
+            item.vendor.toLowerCase().includes(searchTerm) ||
+            item.brandModel.toLowerCase().includes(searchTerm) ||
+            item.assetNo.toLowerCase().includes(searchTerm) ||
+            item.serialNumber.toLowerCase().includes(searchTerm) ||
+            item.room.toLowerCase().includes(searchTerm) ||
+            item.roomNumber.toLowerCase().includes(searchTerm)
+        );
+    }
+
     const tableBody = document.getElementById('inventoryTableBody');
     tableBody.innerHTML = '';
 
     inventory.forEach((item, index) => {
-        // If there's a search term, filter the items
-        if (searchTerm) {
-            const searchableText = Object.values(item).join(' ').toLowerCase();
-            if (!searchableText.includes(searchTerm)) return;
-        }
-
+        const duration = calculateDuration(item.startDate);
         const row = document.createElement('tr');
-        
-        // Calculate duration in use
-        const startDate = new Date(item.startDate);
-        const endDate = new Date(item.endDate);
-        const durationInDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
-        const durationInYears = (durationInDays / 365).toFixed(1);
-
         row.innerHTML = `
             <td>${item.equipmentType}</td>
             <td>${item.vendor}</td>
             <td>${item.brandModel}</td>
             <td>${item.assetNo}</td>
             <td>${item.serialNumber}</td>
-            <td>${formatDate(item.endDate)}</td>
-            <td>${formatDate(item.startDate)}</td>
-            <td>${durationInYears} years</td>
+            <td>${item.endDate}</td>
+            <td>${item.startDate}</td>
+            <td>${duration}</td>
             <td>${item.room}</td>
             <td>${item.roomNumber}</td>
             <td>${item.level}</td>
@@ -112,304 +133,209 @@ function loadInventory(searchTerm = '') {
     });
 }
 
-function formatDate(dateString) {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-}
-
 function editItem(index) {
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    const inventory = JSON.parse(localStorage.getItem('inventory'));
     const item = inventory[index];
     
-    document.getElementById('editIndex').value = index;
-    document.getElementById('editEquipmentType').value = item.equipmentType;
-    document.getElementById('editVendor').value = item.vendor;
-    document.getElementById('editBrandModel').value = item.brandModel;
-    document.getElementById('editAssetNo').value = item.assetNo;
-    document.getElementById('editSerialNumber').value = item.serialNumber;
-    document.getElementById('editEndDate').value = item.endDate;
-    document.getElementById('editStartDate').value = item.startDate;
-    document.getElementById('editRoom').value = item.room;
-    document.getElementById('editRoomNumber').value = item.roomNumber;
-    document.getElementById('editLevel').value = item.level;
-    document.getElementById('editLamphour').value = item.lamphour;
-
-    const modal = new bootstrap.Modal(document.getElementById('editModal'));
-    modal.show();
-}
-
-function saveEdit() {
-    const index = document.getElementById('editIndex').value;
-    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-    
-    const updatedItem = {
-        equipmentType: document.getElementById('editEquipmentType').value,
-        vendor: document.getElementById('editVendor').value,
-        brandModel: document.getElementById('editBrandModel').value,
-        assetNo: document.getElementById('editAssetNo').value,
-        serialNumber: document.getElementById('editSerialNumber').value,
-        endDate: document.getElementById('editEndDate').value,
-        startDate: document.getElementById('editStartDate').value,
-        room: document.getElementById('editRoom').value,
-        roomNumber: document.getElementById('editRoomNumber').value,
-        level: document.getElementById('editLevel').value,
-        lamphour: document.getElementById('editLamphour').value
+    const newItem = {
+        equipmentType: prompt('Enter new Equipment Type:', item.equipmentType),
+        vendor: prompt('Enter new Vendor:', item.vendor),
+        brandModel: prompt('Enter new Brand & Model:', item.brandModel),
+        assetNo: prompt('Enter new Asset No:', item.assetNo),
+        serialNumber: prompt('Enter new Serial Number:', item.serialNumber),
+        endDate: prompt('Enter new End Date (YYYY-MM-DD):', item.endDate),
+        startDate: prompt('Enter new Start Date (YYYY-MM-DD):', item.startDate),
+        room: prompt('Enter new Room:', item.room),
+        roomNumber: prompt('Enter new Room Number:', item.roomNumber),
+        level: prompt('Enter new Level:', item.level),
+        lamphour: prompt('Enter new Lamp Hour:', item.lamphour)
     };
 
-    // Check for duplicates excluding the current item
-    const isDuplicate = inventory.some((item, i) => 
-        i != index && (item.assetNo === updatedItem.assetNo || 
-        item.serialNumber === updatedItem.serialNumber)
-    );
-
-    if (isDuplicate) {
-        alert('An item with this Asset No or Serial Number already exists!');
-        return;
+    // Check if any field was cancelled
+    if (Object.values(newItem).includes(null)) {
+        return; // Exit if any field was cancelled
     }
 
-    inventory[index] = updatedItem;
+    inventory[index] = newItem;
     localStorage.setItem('inventory', JSON.stringify(inventory));
-    
-    const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-    modal.hide();
-    
     loadInventory();
 }
 
 function deleteItem(index) {
     if (confirm('Are you sure you want to delete this item?')) {
-        let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+        const inventory = JSON.parse(localStorage.getItem('inventory'));
         inventory.splice(index, 1);
         localStorage.setItem('inventory', JSON.stringify(inventory));
         loadInventory();
     }
 }
 
-// Import/Export Functions
-function processPastedData(data) {
-    try {
-        const rows = data.trim().split('\n');
-        if (rows.length < 2) {
-            alert('No data found to import');
-            return false;
-        }
-
-        // Get and process headers
-        const headers = rows[0].split('\t').map(header => header.trim().toLowerCase());
-        const headerIndexMap = {
-            'equipmenttype': -1,
-            'vendor': -1,
-            'brandmodel': -1,
-            'assetno': -1,
-            'serialnumber': -1,
-            'enddate': -1,
-            'startdate': -1,
-            'room': -1,
-            'room number': -1,
-            'level': -1,
-            'lamphour': -1
-        };
-
-        // Map header indices
-        headers.forEach((header, index) => {
-            if (headerIndexMap.hasOwnProperty(header.replace(/\s+/g, ''))) {
-                headerIndexMap[header.replace(/\s+/g, '')] = index;
-            }
-        });
-
-        // Get existing inventory
-        const existingInventory = JSON.parse(localStorage.getItem('inventory')) || [];
-        const newInventory = [...existingInventory];
-        let errorRows = [];
-        let updatedCount = 0;
-        let addedCount = 0;
-
-        // Process data rows
-        for (let i = 1; i < rows.length; i++) {
-            const columns = rows[i].split('\t').map(col => col.trim());
-            if (columns.length < headers.length) {
-                errorRows.push(i + 1);
-                continue;
-            }
-
-            // Create item object with only the fields present in headers
-            const item = {};
-            let hasData = false;
-            
-            // Map data according to headers
-            if (headerIndexMap.equipmenttype !== -1) {
-                item.equipmentType = columns[headerIndexMap.equipmenttype];
-                hasData = true;
-            }
-            if (headerIndexMap.vendor !== -1) {
-                item.vendor = columns[headerIndexMap.vendor];
-                hasData = true;
-            }
-            if (headerIndexMap.brandmodel !== -1) {
-                item.brandModel = columns[headerIndexMap.brandmodel];
-                hasData = true;
-            }
-            if (headerIndexMap.assetno !== -1) {
-                item.assetNo = columns[headerIndexMap.assetno];
-                hasData = true;
-            }
-            if (headerIndexMap.serialnumber !== -1) {
-                item.serialNumber = columns[headerIndexMap.serialnumber];
-                hasData = true;
-            }
-            if (headerIndexMap.enddate !== -1) {
-                item.endDate = columns[headerIndexMap.enddate];
-                hasData = true;
-            }
-            if (headerIndexMap.startdate !== -1) {
-                item.startDate = columns[headerIndexMap.startdate];
-                hasData = true;
-            }
-            if (headerIndexMap.room !== -1) {
-                item.room = columns[headerIndexMap.room];
-                hasData = true;
-            }
-            if (headerIndexMap['room number'] !== -1) {
-                item.roomNumber = columns[headerIndexMap['room number']];
-                hasData = true;
-            }
-            if (headerIndexMap.level !== -1) {
-                item.level = columns[headerIndexMap.level];
-                hasData = true;
-            }
-            if (headerIndexMap.lamphour !== -1) {
-                item.lamphour = columns[headerIndexMap.lamphour];
-                hasData = true;
-            }
-
-            if (!hasData) {
-                errorRows.push(i + 1);
-                continue;
-            }
-
-            // Try to find existing item by Asset No or Serial Number
-            const existingItemIndex = newInventory.findIndex(existing => 
-                (item.assetNo && existing.assetNo === item.assetNo) || 
-                (item.serialNumber && existing.serialNumber === item.serialNumber)
-            );
-
-            if (existingItemIndex !== -1) {
-                // Update existing item with new data while preserving existing fields
-                const updatedItem = { ...newInventory[existingItemIndex] };
-                Object.keys(item).forEach(key => {
-                    if (item[key]) {
-                        updatedItem[key] = item[key];
-                    }
-                });
-                newInventory[existingItemIndex] = updatedItem;
-                updatedCount++;
-            } else {
-                // For new items, ensure all required fields have default values
-                const newItem = {
-                    equipmentType: item.equipmentType || '',
-                    vendor: item.vendor || '',
-                    brandModel: item.brandModel || '',
-                    assetNo: item.assetNo || '',
-                    serialNumber: item.serialNumber || '',
-                    endDate: item.endDate || '',
-                    startDate: item.startDate || '',
-                    room: item.room || '',
-                    roomNumber: item.roomNumber || '',
-                    level: item.level || '',
-                    lamphour: item.lamphour || ''
-                };
-                newInventory.push(newItem);
-                addedCount++;
-            }
-        }
-
-        if (errorRows.length > 0) {
-            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
-        }
-
-        if (updatedCount > 0 || addedCount > 0) {
-            localStorage.setItem('inventory', JSON.stringify(newInventory));
-            alert(`Update successful!\nUpdated items: ${updatedCount}\nNew items added: ${addedCount}`);
-            
-            // Close the modal
-            const modalElement = document.getElementById('importModal');
-            const modal = bootstrap.Modal.getInstance(modalElement);
-            if (modal) {
-                modal.hide();
-            }
-
-            // Clear inputs
-            document.getElementById('fileInput').value = '';
-            document.getElementById('dataInput').value = '';
-
-            // Show inventory
-            showInventory();
-            return true;
-        } else {
-            alert('No valid data found to import.');
-            return false;
-        }
-
-    } catch (error) {
-        console.error('Error processing pasted data:', error);
-        alert('Error processing data. Please check the format and try again.');
-        return false;
+function showImportModal() {
+    const modalElement = document.getElementById('importModal');
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
     }
+    // Clear previous inputs
+    document.getElementById('fileInput').value = '';
+    document.getElementById('dataInput').value = '';
+    
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
 }
 
 function processData() {
-    const fileInput = document.getElementById('fileInput');
-    const dataInput = document.getElementById('dataInput');
-    
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            processPastedData(e.target.result);
-        };
-        reader.readAsText(file);
-    } else if (dataInput.value.trim() !== '') {
-        processPastedData(dataInput.value);
-    } else {
-        alert('Please either upload a file or paste data');
+    try {
+        const fileInput = document.getElementById('fileInput');
+        const dataInput = document.getElementById('dataInput');
+        
+        if (fileInput.files.length > 0) {
+            processFile(fileInput.files[0]);
+        } else if (dataInput.value.trim() !== '') {
+            processPastedData(dataInput.value);
+        } else {
+            alert('Please either upload a file or paste data');
+        }
+    } catch (error) {
+        console.error('Error processing data:', error);
+        alert('An error occurred while processing the data. Please check the format and try again.');
     }
+}
+
+function processPastedData(data) {
+    try {
+        const rows = data.trim().split('\n');
+        const inventory = [];
+        let errorRows = [];
+        
+        const startIndex = rows[0].toLowerCase().includes('equipmenttype') ? 1 : 0;
+        
+        for (let i = startIndex; i < rows.length; i++) {
+            const columns = rows[i].split('\t').map(col => col.trim());
+            
+            if (columns.length >= 11) {
+                inventory.push({
+                    equipmentType: columns[0],
+                    vendor: columns[1],
+                    brandModel: columns[2],
+                    assetNo: columns[3],
+                    serialNumber: columns[4],
+                    endDate: columns[5],
+                    startDate: columns[6],
+                    room: columns[7],
+                    roomNumber: columns[8],
+                    level: columns[9],
+                    lamphour: columns[10]
+                });
+            } else {
+                errorRows.push(i + 1);
+            }
+        }
+        
+        if (errorRows.length > 0) {
+            alert(`Warning: Rows ${errorRows.join(', ')} have incorrect format and were skipped.`);
+        }
+        
+        if (inventory.length > 0) {
+            updateInventory(inventory);
+        } else {
+            alert('No valid data found to import.');
+        }
+    } catch (error) {
+        console.error('Error processing pasted data:', error);
+        alert('Error processing data. Please check the format and try again.');
+    }
+}
+
+function processFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            processPastedData(e.target.result);
+        } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Error processing file. Please check the file format and try again.');
+        }
+    };
+    reader.onerror = function(error) {
+        console.error('Error reading file:', error);
+        alert('Error reading file. Please try again.');
+    };
+    reader.readAsText(file);
+}
+
+function updateInventory(newInventory) {
+    try {
+        if (!Array.isArray(newInventory)) {
+            throw new Error('Invalid inventory format');
+        }
+        
+        localStorage.setItem('inventory', JSON.stringify(newInventory));
+        
+        const modalElement = document.getElementById('importModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+        
+        loadInventory();
+        alert('Inventory updated successfully!');
+    } catch (error) {
+        console.error('Error updating inventory:', error);
+        alert('Error updating inventory. Please try again.');
+    }
+}
+
+function sortTable(columnIndex) {
+    const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+
+    inventory.sort((a, b) => {
+        let valueA, valueB;
+        
+        // Get values based on column index
+        switch(columnIndex) {
+            case 0: valueA = a.equipmentType; valueB = b.equipmentType; break;
+            case 1: valueA = a.vendor; valueB = b.vendor; break;
+            case 2: valueA = a.brandModel; valueB = b.brandModel; break;
+            case 3: valueA = a.assetNo; valueB = b.assetNo; break;
+            case 4: valueA = a.serialNumber; valueB = b.serialNumber; break;
+            case 5: valueA = new Date(a.endDate); valueB = new Date(b.endDate); break;
+            case 6: valueA = new Date(a.startDate); valueB = new Date(b.startDate); break;
+            case 8: valueA = a.room; valueB = b.room; break;
+            case 9: valueA = a.roomNumber; valueB = b.roomNumber; break;
+            case 10: valueA = parseInt(a.level) || 0; valueB = parseInt(b.level) || 0; break;
+            case 11: valueA = parseInt(a.lamphour) || 0; valueB = parseInt(b.lamphour) || 0; break;
+            default: return 0;
+        }
+
+        if (valueA < valueB) return -1;
+        if (valueA > valueB) return 1;
+        return 0;
+    });
+
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    loadInventory();
 }
 
 function exportToCSV() {
     const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    
     if (inventory.length === 0) {
         alert('No data to export');
         return;
     }
 
-    const headers = ['Equipment Type', 'Vendor', 'Brand & Model', 'Asset No', 
-                    'Serial Number', 'End Date', 'Start Date', 'Room', 
-                    'Room Number', 'Level', 'Lamp Hour'];
-    
-    const csvRows = [headers.join('\t')];
-
-    inventory.forEach(item => {
-        const row = [
-            item.equipmentType,
-            item.vendor,
-            item.brandModel,
-            item.assetNo,
-            item.serialNumber,
-            item.endDate,
-            item.startDate,
-            item.room,
-            item.roomNumber,
-            item.level,
-            item.lamphour
-        ];
-        csvRows.push(row.join('\t'));
+    const headers = ['Equipment Type,Vendor,Brand & Model,Asset No,Serial Number,End Date,Start Date,Duration in Use,Room,Room Number,Level,Lamp Hour'];
+    const csvData = inventory.map(item => {
+        const duration = calculateDuration(item.startDate);
+        return `${item.equipmentType},${item.vendor},${item.brandModel},${item.assetNo},${item.serialNumber},${item.endDate},${item.startDate},${duration},${item.room},${item.roomNumber},${item.level},${item.lamphour}`;
     });
 
-    const csvContent = csvRows.join('\n');
+    const csvContent = headers.concat(csvData).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     
-    if (navigator.msSaveBlob) {
+    if (navigator.msSaveBlob) { // IE 10+
         navigator.msSaveBlob(blob, 'inventory.csv');
     } else {
         link.href = URL.createObjectURL(blob);
